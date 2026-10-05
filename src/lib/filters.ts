@@ -1,0 +1,118 @@
+import type { Row, Stop } from './types'
+
+export type FlagKey =
+  | 'noinsect' | 'nosmell' | 'nodorm' | 'ownbath' | 'balcony' | 'balroom' | 'free' | 'gem'
+  | 'plusonly' | 'anyplus' | 'hideminus' | 'saved'
+export type RangeKey = 'pmin' | 'pmax' | 'mmin' | 'mmax' | 'tmin' | 'tmax' | 'kmax' | 'rmin'
+export type SortKey =
+  | 'mark' | 'rank' | 'name' | 'my' | 'night' | 'free' | 'km' | 'brief' | 'pr' | 'co' | 'flag'
+  | 'sc' | 'cl' | 'fa' | 'lo' | 'se' | 'amn' | 'st' | 'ng' | 'ns'
+
+export interface Filters {
+  q: string
+  zones: string[]
+  types: string[]
+  flags: FlagKey[]
+  ranges: Partial<Record<RangeKey, number>>
+  sort: SortKey
+  dir: 1 | -1
+}
+
+export const FLAG_LABELS: [FlagKey, string][] = [
+  ['noinsect', 'Без насекомых'], ['nosmell', 'Без запаха и сырости'], ['nodorm', 'Скрыть койки'],
+  ['ownbath', 'Свой санузел'], ['balcony', 'С балконом'], ['balroom', 'Балкон в самом дешёвом номере'],
+  ['free', 'Бесплатная отмена'], ['gem', 'Только находки'], ['plusonly', 'Только с моим плюсом'],
+  ['anyplus', 'Плюс у кого-то из нас'], ['hideminus', 'Скрыть с минусом'], ['saved', 'Мои сохранённые на trip.com'],
+]
+export const ASC_FIRST: SortKey[] = ['mark', 'km', 'night', 'rank', 'name', 'free', 'ng', 'ns', 'flag']
+
+export const defaultFilters = (stop: Stop): Filters => ({
+  q: '', zones: [...stop.prio], types: [], flags: ['nodorm'], ranges: {}, sort: 'my', dir: -1,
+})
+
+export interface MarkView {
+  mine: (id: number) => 0 | 1 | -1
+  anyPlus: (id: number) => boolean
+}
+
+const inRange = (v: number | null, lo?: number, hi?: number) =>
+  !((lo != null && (v == null || v < lo)) || (hi != null && (v == null || v > hi)))
+
+export function passes(r: Row, f: Filters, marks: MarkView) {
+  if (f.q && !r.nm.toLowerCase().includes(f.q.toLowerCase())) return false
+  const plan = r.anchor || r.proposed
+  if (f.zones.length && !f.zones.includes(r.z) && !plan) return false
+  if (plan) return true
+  const R = f.ranges
+  if (!inRange(r.night, R.pmin, R.pmax) || !inRange(r.my, R.mmin, R.mmax) || !inRange(r.sc, R.tmin, R.tmax)) return false
+  if (R.kmax != null && (r.km == null || r.km > R.kmax)) return false
+  if (R.rmin != null && r.an < R.rmin) return false
+  const has = (k: FlagKey) => f.flags.includes(k)
+  if (has('noinsect') && (r.ins > 0 || !r.an)) return false
+  if (has('nosmell') && (!r.an || ((r.sm + r.dm) / r.an) * 100 >= 1.5)) return false
+  if (has('nodorm') && r.dorm) return false
+  if (has('ownbath') && (r.shared || r.dorm)) return false
+  if (has('free') && !r.free) return false
+  if (has('gem') && !r.gem) return false
+  if (f.types.length && !f.types.includes(r.tg)) return false
+  if (has('saved') && !r.sv) return false
+  if (has('balcony') && !r.balcony) return false
+  if (has('balroom') && !r.balRoom) return false
+  const m = marks.mine(r.id)
+  if (has('plusonly') && m !== 1) return false
+  if (has('anyplus') && !marks.anyPlus(r.id)) return false
+  if (has('hideminus') && m === -1) return false
+  return true
+}
+
+export function sortValue(r: Row, k: SortKey, marks: MarkView): number | string | null {
+  switch (k) {
+    case 'mark': { const m = marks.mine(r.id); return m === 1 ? 0 : m === -1 ? 3 : marks.anyPlus(r.id) ? 1 : 2 }
+    case 'name': return r.nm.toLowerCase()
+    case 'free': return r.free ? 0 : 1
+    case 'brief': return (r.fx || []).length - 2 * (r.rf || []).length
+    case 'pr': return r.pr.length
+    case 'co': return r.co.length
+    case 'flag': return r.flagRate
+    default: return (r as unknown as Record<string, number | null>)[k] ?? null
+  }
+}
+
+export function applyFilters(rows: Row[], f: Filters, marks: MarkView) {
+  const list = rows.filter((r) => !r.anchor && passes(r, f, marks))
+  list.sort((a, b) => {
+    const x = sortValue(a, f.sort, marks), y = sortValue(b, f.sort, marks)
+    if (x == null && y == null) return 0
+    if (x == null) return 1
+    if (y == null) return -1
+    return (x > y ? 1 : x < y ? -1 : 0) * f.dir || (b.my ?? -1) - (a.my ?? -1)
+  })
+  return list
+}
+
+/** Фильтры ↔ строка запроса, чтобы ссылкой можно было поделиться. */
+export function encodeFilters(f: Filters, stop: Stop): string {
+  const d = defaultFilters(stop)
+  const o: Record<string, unknown> = {}
+  if (f.q) o.q = f.q
+  if (f.zones.join('|') !== d.zones.join('|')) o.z = f.zones
+  if (f.types.length) o.t = f.types
+  if (f.flags.join(',') !== d.flags.join(',')) o.f = f.flags
+  if (Object.keys(f.ranges).length) o.r = f.ranges
+  if (f.sort !== d.sort || f.dir !== d.dir) o.s = [f.sort, f.dir]
+  return Object.keys(o).length ? JSON.stringify(o) : ''
+}
+export function decodeFilters(raw: string | null | undefined, stop: Stop): Filters {
+  const f = defaultFilters(stop)
+  if (!raw) return f
+  try {
+    const o = JSON.parse(raw)
+    if (typeof o.q === 'string') f.q = o.q
+    if (Array.isArray(o.z)) f.zones = o.z
+    if (Array.isArray(o.t)) f.types = o.t
+    if (Array.isArray(o.f)) f.flags = o.f
+    if (o.r && typeof o.r === 'object') f.ranges = o.r
+    if (Array.isArray(o.s)) { f.sort = o.s[0]; f.dir = o.s[1] === 1 ? 1 : -1 }
+  } catch { /* битая ссылка — просто фильтры по умолчанию */ }
+  return f
+}
