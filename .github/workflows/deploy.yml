@@ -1,0 +1,48 @@
+name: Deploy to GitHub Pages
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 3 * * *"   # каждый день, после обновления данных в thailand-trip-pipeline
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Свежие данные из thailand-trip-pipeline
+        run: |
+          set -e
+          if curl -fsSL https://codeload.github.com/max2201/thailand-trip-pipeline/tar.gz/refs/heads/main -o /tmp/data.tgz; then
+            mkdir -p /tmp/pipeline && tar -xzf /tmp/data.tgz -C /tmp/pipeline
+            SRC=$(find /tmp/pipeline -maxdepth 2 -type d -name site-data | head -1)
+            if [ -n "$SRC" ] && [ -f "$SRC/index.json" ]; then rm -rf public/data && cp -r "$SRC" public/data && echo "данные обновлены"; fi
+          else
+            echo "не удалось скачать — собираю на данных из репозитория"
+          fi
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
