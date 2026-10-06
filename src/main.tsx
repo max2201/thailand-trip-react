@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css'
 import './styles.css'
 import App from './App'
 import { marksStore } from './lib/marks'
+import { setupUpdates } from './lib/pwa'
 
 const theme = (() => { try { return localStorage.getItem('theme') } catch { return null } })()
 if (theme) document.documentElement.dataset.theme = theme
@@ -17,3 +18,4 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 marksStore.init()
+setupUpdates()
