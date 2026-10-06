@@ -113,9 +113,12 @@ export function HotelMap({ rows, visible, stop, selected, onSelect }: Props) {
   }, [rows, stop, visible, selected, legend, store, store.version])
 
   // Выбранный отель — к центру карты (отдельно, чтобы смена фильтров не двигала карту).
+  // Подсказка открыта только у выбранного: прежнюю закрываем, иначе они копятся на карте.
+  const openTip = useRef<L.Layer | null>(null)
   useEffect(() => {
+    openTip.current?.closeTooltip(); openTip.current = null
     const e = selected != null ? entries.current.get(selected) : null
-    if (e && map.current) { map.current.panTo(e.layer.getLatLng()); e.layer.openTooltip() }
+    if (e && map.current) { map.current.panTo(e.layer.getLatLng()); e.layer.openTooltip(); openTip.current = e.layer }
   }, [selected])
 
   // Высота «шапки» с картой нужна таблице: она занимает остаток экрана под картой.
