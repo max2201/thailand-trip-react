@@ -262,7 +262,9 @@ body.resizing .mapcanvas{pointer-events:none}
 .lgsep{width:1px;height:16px;background:var(--line);margin:0 2px}
 .lgring{display:inline-flex;align-items:center;gap:6px}
 .lgring input[type=range]{width:120px;margin:0;accent-color:var(--accent);cursor:pointer}
-.lgring output{min-width:44px;font-size:12px;color:var(--ink);font-variant-numeric:tabular-nums}
+.lgnum{width:66px;padding:2px 7px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:12px;line-height:1.5;font-variant-numeric:tabular-nums;text-align:right}
+.lgnum:hover{border-color:var(--muted)}
+.lgnum:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
 .lglink{background:none;border:0;padding:0;color:var(--accent);font-size:12px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 /* отмеченные отели на карте: кружок цвета оценки с «+» или «−» */
 .mpin-wrap{background:none;border:0}
