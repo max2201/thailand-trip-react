@@ -37,8 +37,14 @@ export interface Hotel {
   bal?: number          // упоминаний балкона
 }
 
-/** [ночь, всего, бесплатная отмена, номер, койка, общий санузел, без окна] */
-export type PriceTuple = [number | null, number | null, 0 | 1, string, 0 | 1, 0 | 1, 0 | 1]
+/**
+ * Отметки trip.com в выдаче (собирает пайплайн): m — значок партнёра (3 или 4), a — [место, рейтинг, где],
+ * n — «Работает с 2026», «Отремонтирован в 2025»…, ad — реклама, p — акции, d — скидка в %, r — выводы trip.com из отзывов.
+ */
+export interface TcMarks { m?: number; a?: [number, string, string]; n?: string[]; ad?: 1; p?: string[]; d?: number; r?: string[] }
+
+/** [ночь, всего, бесплатная отмена, номер, койка, общий санузел, без окна, отметки trip.com (0 — нет)] */
+export type PriceTuple = [number | null, number | null, 0 | 1, string, 0 | 1, 0 | 1, 0 | 1, (TcMarks | 0)?]
 export type Prices = Record<string, PriceTuple>
 
 export type EventTuple = [date: string, title: string, place: string, status: string, note: string]
@@ -79,6 +85,7 @@ export interface Row extends Hotel {
   my: number | null; parts: Parts | null; gem: boolean
   flagRate: number | null; insLvl: Level; smLvl: Level; dmLvl: Level; clean: boolean
   rank: number
+  tc: TcMarks | null
 }
 
 export interface StopRows { rows: Row[]; medp: number; p35: number }

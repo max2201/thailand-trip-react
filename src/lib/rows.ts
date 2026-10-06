@@ -42,7 +42,7 @@ export function buildRows(stop: Stop, hotels: Hotel[], prices: Prices): StopRows
     const room = p[3] || ''
     const r = {
       ...h, tg: typeGroup(h.cat), night: p[0], total: p[1], free: !!p[2], room,
-      dorm: !!p[4], shared: !!p[5], nowin: !!p[6], km,
+      dorm: !!p[4], shared: !!p[5], nowin: !!p[6], tc: p[7] || null, km,
       anchor: +id === stop.anchor, proposed: +id === stop.proposed,
     } as Row
     r.balRoom = BAL.test(room) && !NO_BAL.test(room)

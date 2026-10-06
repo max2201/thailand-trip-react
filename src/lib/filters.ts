@@ -1,4 +1,5 @@
 import type { Row, Stop } from './types'
+import { TC_LABELS, tcHas, tcScore, type TcKey } from './tcmarks'
 
 export type FlagKey =
   | 'noinsect' | 'nosmell' | 'nodorm' | 'ownbath' | 'balcony' | 'balroom' | 'free' | 'gem'
@@ -6,12 +7,13 @@ export type FlagKey =
 export type RangeKey = 'pmin' | 'pmax' | 'mmin' | 'mmax' | 'tmin' | 'tmax' | 'kmax' | 'rmin'
 export type SortKey =
   | 'mark' | 'rank' | 'name' | 'my' | 'night' | 'free' | 'km' | 'brief' | 'pr' | 'co' | 'flag'
-  | 'sc' | 'cl' | 'fa' | 'lo' | 'se' | 'amn' | 'st' | 'ng' | 'ns'
+  | 'sc' | 'tcm' | 'cl' | 'fa' | 'lo' | 'se' | 'amn' | 'st' | 'ng' | 'ns'
 
 export interface Filters {
   q: string
   zones: string[]
   types: string[]
+  tcm: TcKey[]          // отметки trip.com: показывать отели, у которых есть хотя бы одна из выбранных
   flags: FlagKey[]
   ranges: Partial<Record<RangeKey, number>>
   sort: SortKey
@@ -27,7 +29,7 @@ export const FLAG_LABELS: [FlagKey, string][] = [
 export const ASC_FIRST: SortKey[] = ['mark', 'km', 'night', 'rank', 'name', 'free', 'ng', 'ns', 'flag']
 
 export const defaultFilters = (stop: Stop): Filters => ({
-  q: '', zones: [...stop.prio], types: [], flags: ['nodorm'], ranges: {}, sort: 'my', dir: -1,
+  q: '', zones: [...stop.prio], types: [], tcm: [], flags: ['nodorm'], ranges: {}, sort: 'my', dir: -1,
 })
 
 export interface MarkView {
@@ -57,6 +59,7 @@ export function passes(r: Row, f: Filters, marks: MarkView, radiusM?: number) {
   if (has('free') && !r.free) return false
   if (has('gem') && !r.gem) return false
   if (f.types.length && !f.types.includes(r.tg)) return false
+  if (f.tcm?.length && !f.tcm.some((k) => tcHas(r.tc, k))) return false
   if (has('saved') && !r.sv) return false
   if (has('balcony') && !r.balcony) return false
   if (has('balroom') && !r.balRoom) return false
@@ -76,6 +79,7 @@ export function sortValue(r: Row, k: SortKey, marks: MarkView): number | string 
     case 'pr': return r.pr.length
     case 'co': return r.co.length
     case 'flag': return r.flagRate
+    case 'tcm': return tcScore(r.tc)
     default: return (r as unknown as Record<string, number | null>)[k] ?? null
   }
 }
@@ -100,6 +104,7 @@ export function encodeFilters(f: Filters, stop: Stop): string {
   if (f.q) o.q = f.q
   if (f.zones.join('|') !== d.zones.join('|')) o.z = f.zones
   if (f.types.length) o.t = f.types
+  if (f.tcm.length) o.c = f.tcm
   if (f.flags.join(',') !== d.flags.join(',')) o.f = f.flags
   if (Object.keys(f.ranges).length) o.r = f.ranges
   if (f.sort !== d.sort || f.dir !== d.dir) o.s = [f.sort, f.dir]
@@ -113,6 +118,7 @@ export function decodeFilters(raw: string | null | undefined, stop: Stop): Filte
     if (typeof o.q === 'string') f.q = o.q
     if (Array.isArray(o.z)) f.zones = o.z
     if (Array.isArray(o.t)) f.types = o.t
+    if (Array.isArray(o.c)) f.tcm = o.c.filter((k: TcKey) => TC_LABELS.some(([x]) => x === k))
     if (Array.isArray(o.f)) f.flags = o.f.filter((k: FlagKey) => FLAG_LABELS.some(([x]) => x === k))
     if (o.r && typeof o.r === 'object') f.ranges = o.r
     if (Array.isArray(o.s)) { f.sort = o.s[0]; f.dir = o.s[1] === 1 ? 1 : -1 }
