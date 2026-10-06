@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "0 3 * * *"   # каждый день, после обновления данных в thailand-trip-pipeline
+    - cron: "43 2 * * *"   # каждый день в 02:43 UTC, после обновления данных в thailand-trip-pipeline (не ровно в :00 — такие запуски GitHub часто пропускает)
   workflow_dispatch:
 permissions:
   contents: read
