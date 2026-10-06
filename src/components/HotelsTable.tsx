@@ -64,7 +64,9 @@ export function HotelsTable({ list, stop, filters, selected, onSort, onSelect }:
     if (i >= 0) virt.scrollToIndex(i, { align: 'center' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected])
-  useEffect(() => { box.current?.scrollTo({ top: 0 }) }, [filters.sort, filters.dir, list.length])
+  // Наверх — только когда меняются фильтры или сортировка (объект filters новый при каждом изменении).
+  // Отметки сюда не попадают: даже если «Скрыть с минусом» убрал строку, таблица остаётся на месте.
+  useEffect(() => { box.current?.scrollTo({ top: 0 }) }, [filters])
 
   const sortBy = (k: SortKey) => {
     if (filters.sort === k) onSort(k, filters.dir === 1 ? -1 : 1)

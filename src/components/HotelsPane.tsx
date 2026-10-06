@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import type { Guide, Stop, StopRows } from '../lib/types'
 import { applyFilters, encodeFilters, type Filters } from '../lib/filters'
 import { useMarks } from '../hooks/useMarks'
+import { useLegend } from '../hooks/useLegend'
 import { useTrip } from '../store/trip'
 import { FiltersPanel } from './FiltersPanel'
 import { HotelsTable } from './HotelsTable'
@@ -14,6 +15,7 @@ const narrow = () => window.matchMedia('(max-width: 760px)').matches
 
 export function HotelsPane({ stop, data, guide, filters }: { stop: Stop; data: StopRows; guide: Guide; filters: Filters }) {
   const store = useMarks()
+  const [legend] = useLegend()
   const setFiltersFor = useTrip((s) => s.setFilters)
   const setFilters = (u: (f: Filters) => Filters) => setFiltersFor(stop.id, u)
   const [, setSearch] = useSearchParams()
@@ -21,7 +23,7 @@ export function HotelsPane({ stop, data, guide, filters }: { stop: Stop; data: S
   // Список зависит и от отметок (фильтры «с плюсом»), поэтому учитываем version хранилища.
   const list = useMemo(() => applyFilters(data.rows, filters, {
     mine: (id) => store.mine(stop.id, id), anyPlus: (id) => store.anyPlus(stop.id, id),
-  }), [data.rows, filters, store, store.version, stop.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, legend.r), [data.rows, filters, store, store.version, stop.id, legend.r]) // eslint-disable-line react-hooks/exhaustive-deps
   const visible = useMemo(() => new Set(list.map((r) => r.id)), [list])
 
   const [view, setView] = useState<'table' | 'cards'>(() => {

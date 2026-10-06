@@ -4,6 +4,8 @@ import { FLAG_LABELS, defaultFilters, type Filters, type FlagKey, type RangeKey 
 import { TYPES, TYPE_ORDER } from '../lib/rows'
 import { plural } from '../lib/format'
 import { useMarks } from '../hooks/useMarks'
+import { useLegend } from '../hooks/useLegend'
+import { radiusText } from '../lib/maplegend'
 
 interface Props { filters: Filters; setFilters: (u: (f: Filters) => Filters) => void; rows: Row[]; stop: Stop; guide: Guide; shown: number; total: number }
 
@@ -15,6 +17,7 @@ const toggled = (arr: string[], v: string) => (arr.includes(v) ? arr.filter((x) 
 
 export function FiltersPanel({ filters: f, setFilters, rows, stop, guide, shown, total }: Props) {
   const store = useMarks()
+  const [legend] = useLegend()
   // useMemo — аналог computed во Vue: пересчёт только при смене rows.
   const { zoneCounts, typeCounts, saved, bal, balRoom } = useMemo(() => {
     const zoneCounts: Record<string, number> = {}, typeCounts: Record<string, number> = {}
@@ -33,7 +36,8 @@ export function FiltersPanel({ filters: f, setFilters, rows, stop, guide, shown,
     return Object.keys(zoneCounts).sort((a, b) => +stop.prio.includes(b) - +stop.prio.includes(a) || order.indexOf(a) - order.indexOf(b))
   }, [zoneCounts, guide, stop])
   const flags = FLAG_LABELS.filter(([k]) => k !== 'saved' || saved)
-  const flagCount = (k: FlagKey) => (k === 'balcony' ? bal : k === 'balroom' ? balRoom : k === 'saved' ? saved : null)
+  // у «Только в радиусе» вместо числа — текущий радиус круга с карты
+  const flagCount = (k: FlagKey) => (k === 'inradius' ? radiusText(legend.r) : k === 'balcony' ? bal : k === 'balroom' ? balRoom : k === 'saved' ? saved : null)
 
   const setRange = (k: RangeKey, v: string) => setFilters((x) => {
     const ranges = { ...x.ranges }

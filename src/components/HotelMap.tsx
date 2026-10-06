@@ -4,10 +4,11 @@ import type { Row, Stop } from '../lib/types'
 import { scoreColor } from '../lib/format'
 import { boxStyle, canvasStyle, defaultMapSize, keyResize, loadMapSize, saveMapSize, startResize, type MapSize } from '../lib/mapsize'
 import {
-  LEGEND_MARK, LEGEND_SCORE, R_MAX, R_MIN, R_STEP, legendCounts, loadLegend, pinHtml, radiusText, saveLegend,
-  shownOnMap, toggleKey, tooltipHtml, type LegendKey, type LegendState,
+  LEGEND_MARK, LEGEND_SCORE, R_MAX, R_MIN, R_STEP, legendCounts, parseRadius, pinHtml, radiusText,
+  shownOnMap, toggleKey, tooltipHtml, type LegendKey,
 } from '../lib/maplegend'
 import { useMarks } from '../hooks/useMarks'
+import { useLegend } from '../hooks/useLegend'
 
 const cssVar = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim() || '#888'
 const colorOf = (r: Row) => (r.anchor ? cssVar('--ink') : cssVar(scoreColor(r.my).slice(4, -1)))
@@ -40,9 +41,17 @@ export function HotelMap({ rows, visible, stop, selected, onSelect }: Props) {
   }
   const resetSize = () => { setCustom(null); saveMapSize(null) }
 
-  // Легенда-пульт: меняет только то, что видно на карте.
-  const [legend, setLegendState] = useState<LegendState>(loadLegend)
-  const setLegend = (s: LegendState) => { setLegendState(s); saveLegend(s) }
+  // Легенда-пульт: меняет только то, что видно на карте (радиус ещё читает флажок «Только в радиусе»).
+  const [legend, setLegend] = useLegend()
+  const setRadius = (r: number) => setLegend({ off: legend.off.filter((k) => k !== 'ring'), r })
+  // Радиус текстом: черновик живёт, пока поле в фокусе; Enter или уход из поля — применить, Esc — отмена.
+  const [draft, setDraft] = useState<string | null>(null)
+  const cancelDraft = useRef(false)
+  const commitDraft = () => {
+    if (!cancelDraft.current && draft != null) { const v = parseRadius(draft); if (v != null) setRadius(v) }
+    cancelDraft.current = false
+    setDraft(null)
+  }
   const isOn = (k: LegendKey) => !legend.off.includes(k)
   const toggle = (k: LegendKey) => setLegend(toggleKey(legend, k))
   const counts = useMemo(() => legendCounts(rows, visible, (id) => store.mine(stop.id, id)),
@@ -150,8 +159,11 @@ export function HotelMap({ rows, visible, stop, selected, onSelect }: Props) {
             <span className="lgring">
               <button type="button" className="lgc" aria-pressed={isOn('ring')} onClick={() => toggle('ring')}><i className="lgcirc" /><span className="lgl">радиус</span></button>
               <input type="range" min={R_MIN} max={R_MAX} step={R_STEP} value={legend.r} aria-label="Радиус круга вокруг «нашего» отеля"
-                onChange={(e) => setLegend({ off: legend.off.filter((k) => k !== 'ring'), r: +e.target.value })} />
-              <output>{radiusText(legend.r)}</output>
+                onChange={(e) => setRadius(+e.target.value)} />
+              <input className="lgnum" type="text" inputMode="decimal" value={draft ?? radiusText(legend.r)} aria-label="Радиус текстом, например 1,5 или 800 м"
+                title="Можно ввести: 1,5 · 1.5 км · 800 · 800 м (от 100 м до 5 км)" onFocus={(e) => e.currentTarget.select()}
+                onChange={(e) => setDraft(e.target.value)} onBlur={commitDraft}
+                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') { cancelDraft.current = true; e.currentTarget.blur() } }} />
             </span>
             {legend.off.length > 0 && <button type="button" className="lglink" onClick={() => setLegend({ ...legend, off: [] })}>показать всё</button>}
           </div>
