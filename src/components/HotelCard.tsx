@@ -2,7 +2,7 @@ import type { Row, Stop } from '../lib/types'
 import { AMENITY, consList, tripLink } from '../lib/rows'
 import { dec, dec1, fmt } from '../lib/format'
 import { MarkButton } from './MarkButton'
-import { Badges, BriefBlock, FlagsBlock, ScoreChip } from './Bits'
+import { Badges, BriefBlock, FlagsBlock, ScoreChip, TcMarksBlock } from './Bits'
 import { useMarks } from '../hooks/useMarks'
 
 export function HotelCard({ r, stop, selected }: { r: Row; stop: Stop; selected: boolean }) {
@@ -17,6 +17,7 @@ export function HotelCard({ r, stop, selected }: { r: Row; stop: Stop; selected:
           <h3><a href={tripLink(r.id, stop)} target="_blank" rel="noopener">{r.nm}</a></h3>
           <div className="meta">#{r.rank}, {r.z}{r.yr && <>, открыт в {r.yr}</>}</div>
           <Badges row={r} stop={stop} />
+          <TcMarksBlock tc={r.tc} quiet />
         </div>
         <ScoreChip row={r} />
       </div>

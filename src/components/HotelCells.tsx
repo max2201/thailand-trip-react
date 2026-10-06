@@ -2,9 +2,9 @@ import type { Row, Stop } from '../lib/types'
 import { AMENITY, consList, tripLink } from '../lib/rows'
 import { dec, dec1, fmt } from '../lib/format'
 import { MarkButton } from './MarkButton'
-import { Badges, BriefBlock, FlagsBlock, ScoreChip, SubBar } from './Bits'
+import { Badges, BriefBlock, FlagsBlock, ScoreChip, SubBar, TcMarksBlock } from './Bits'
 
-/** Ячейки одной строки (фрагмент из 20 <td>); <tr> рисует родитель. */
+/** Ячейки одной строки (фрагмент из 21 <td>); <tr> рисует родитель. */
 export function HotelCells({ r, stop, left }: { r: Row; stop: Stop; left: number[] }) {
   return (
     <>
@@ -26,6 +26,7 @@ export function HotelCells({ r, stop, left }: { r: Row; stop: Stop; left: number
       <td><ul className="pc cons">{consList(r).map((x) => <li key={x}>{x}</li>)}</ul></td>
       <td><FlagsBlock row={r} /></td>
       <td className="num"><b>{dec1(r.sc)}</b><div className="sub2">{fmt(r.rv)} отзывов</div></td>
+      <td><TcMarksBlock tc={r.tc} /></td>
       <td><SubBar v={r.cl} /></td>
       <td><SubBar v={r.fa} /></td>
       <td><SubBar v={r.lo} /></td>

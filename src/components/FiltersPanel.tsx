@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import type { Guide, Row, Stop } from '../lib/types'
 import { FLAG_LABELS, defaultFilters, type Filters, type FlagKey, type RangeKey } from '../lib/filters'
 import { TYPES, TYPE_ORDER } from '../lib/rows'
+import { TC_LABELS, tcHas, type TcKey } from '../lib/tcmarks'
 import { plural } from '../lib/format'
 import { useMarks } from '../hooks/useMarks'
 import { useLegend } from '../hooks/useLegend'
@@ -59,6 +60,7 @@ export function FiltersPanel({ filters: f, setFilters, rows, stop, guide, shown,
     setClearLabel(`Точно удалить ${n} ${plural(n, 'отметку', 'отметки', 'отметок')}? Нажмите ещё раз`)
     setTimeout(() => { if (armed.current) { armed.current = false; resetLabel() } }, 4000)
   }
+  const tcCounts = useMemo(() => Object.fromEntries(TC_LABELS.map(([t]) => [t, rows.filter((r) => tcHas(r.tc, t)).length])) as Record<TcKey, number>, [rows])
   const typeTitle = (t: string) => (TYPES.find((x) => x[0] === t)?.[1] ?? ['без указанного типа']).join(', ')
 
   return (
@@ -93,6 +95,18 @@ export function FiltersPanel({ filters: f, setFilters, rows, stop, guide, shown,
             <button className="link" type="button" onClick={() => setFilters((x) => ({ ...x, types: [] }))}>Все типы</button>
           </div>
         </div>
+        <div className="group">
+          <span className="glabel">Отметки trip.com (есть хотя бы одна из выбранных)</span>
+          <div className="zones">
+            {TC_LABELS.filter(([k]) => tcCounts[k]).map(([k, label, title]) => (
+              <button key={k} type="button" className="chip" title={title} aria-pressed={f.tcm.includes(k)}
+                onClick={() => setFilters((x) => ({ ...x, tcm: toggled(x.tcm, k) as TcKey[] }))}>
+                <span className="box">✓</span>{label} <span className="sub">{tcCounts[k]}</span>
+              </button>
+            ))}
+            <button className="link" type="button" onClick={() => setFilters((x) => ({ ...x, tcm: [] }))}>Любые</button>
+          </div>
+          </div>
       </div>
       <div className="prow">
         {RANGES.map(([a, b, label, step]) => (

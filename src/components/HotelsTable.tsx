@@ -10,7 +10,7 @@ const COLS: [SortKey, string, string][] = [
   ['mark', '±', ''], ['rank', '#', ''], ['name', 'Отель', ''], ['my', 'Моя оценка', 'из 10'],
   ['night', 'Цена за ночь', ''], ['free', 'Отмена', ''], ['km', 'До «нашего» отеля', 'по прямой'],
   ['brief', 'Коротко об отеле', 'чем известен, осторожно, где'], ['pr', 'Хвалят', ''], ['co', 'Жалуются', ''],
-  ['flag', 'Красные флаги', 'отзывов с упоминанием'], ['sc', 'Trip.com', 'оценка, отзывов'],
+  ['flag', 'Красные флаги', 'отзывов с упоминанием'], ['sc', 'Trip.com', 'оценка, отзывов'], ['tcm', 'Отметки Trip.com', 'значки, рейтинги, акции'],
   ['cl', 'Чистота', ''], ['fa', 'Удобства', 'оценка гостей'], ['lo', 'Расположение', ''], ['se', 'Сервис', ''],
   ['amn', 'Что есть в отеле', ''], ['st', 'Тип', 'и звёзды'], ['ng', 'Негатив', 'оценки 6 и ниже'], ['ns', 'Шум', 'доля отзывов'],
 ]
@@ -94,7 +94,7 @@ export function HotelsTable({ list, stop, filters, selected, onSort, onSelect }:
           </tr>
         </thead>
         <tbody>
-          {padTop > 0 && <tr className="spacer"><td colSpan={20} style={{ height: padTop }} /></tr>}
+          {padTop > 0 && <tr className="spacer"><td colSpan={21} style={{ height: padTop }} /></tr>}
           {items.map((it) => {
             const r = list[it.index]
             return (
@@ -103,8 +103,8 @@ export function HotelsTable({ list, stop, filters, selected, onSort, onSelect }:
               </tr>
             )
           })}
-          {padBottom > 0 && <tr className="spacer"><td colSpan={20} style={{ height: padBottom }} /></tr>}
-          {!list.length && <tr><td colSpan={20} className="empty">Под эти фильтры ничего не подходит. Снимите один из фильтров или нажмите «Весь город».</td></tr>}
+          {padBottom > 0 && <tr className="spacer"><td colSpan={21} style={{ height: padBottom }} /></tr>}
+          {!list.length && <tr><td colSpan={21} className="empty">Под эти фильтры ничего не подходит. Снимите один из фильтров или нажмите «Весь город».</td></tr>}
         </tbody>
       </table>
     </div>
