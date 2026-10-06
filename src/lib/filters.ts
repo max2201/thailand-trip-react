@@ -79,7 +79,8 @@ export function sortValue(r: Row, k: SortKey, marks: MarkView): number | string 
 }
 
 export function applyFilters(rows: Row[], f: Filters, marks: MarkView) {
-  const list = rows.filter((r) => !r.anchor && passes(r, f, marks))
+  // «Наш» отель идёт в общем списке и сортируется как все (проходит любые фильтры, кроме поиска по названию).
+  const list = rows.filter((r) => passes(r, f, marks))
   list.sort((a, b) => {
     const x = sortValue(a, f.sort, marks), y = sortValue(b, f.sort, marks)
     if (x == null && y == null) return 0
