@@ -233,8 +233,8 @@ footer{margin-top:18px;color:var(--muted);font-size:13px}
 .hstack{margin-top:12px}
 .mapdock{position:relative;z-index:30;background:var(--paper);padding:8px 0 10px;margin-top:-8px}
 .hstack.hs-cards .mapdock{position:sticky;top:0}
-.mapbox{position:relative;margin:0;max-width:100%;min-width:260px;min-height:160px;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-.mapcanvas{flex:1 1 auto;min-height:0}
+.mapbox{position:relative;margin:0;max-width:100%;min-width:260px;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.mapcanvas{flex:none}
 .mapbox .leaflet-container{width:100%;background:var(--line-soft);font:inherit}
 .mapbox figcaption{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:12px;color:var(--muted);padding:7px 34px 7px 10px;border-top:1px solid var(--line-soft)}
 .mapbox .mhint{margin-left:auto;opacity:.75}
@@ -245,6 +245,32 @@ footer{margin-top:18px;color:var(--muted);font-size:13px}
 body.resizing{cursor:nwse-resize;user-select:none}
 body.resizing .mapcanvas{pointer-events:none}
 .hstack>.cards{margin-top:0}
+/* легенда карты — она же пульт: пункты включают и выключают группы точек (только на карте) */
+.lg{display:flex;flex-wrap:wrap;gap:5px 6px;align-items:center;flex:1 1 auto;min-width:0}
+.lgc{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:2px 9px 2px 7px;font:inherit;font-size:12px;line-height:1.5;color:var(--ink);cursor:pointer}
+.lgc:hover{border-color:var(--muted)}
+.lgc small{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.lgc[aria-pressed="false"]{background:transparent;color:var(--muted);border-style:dashed}
+.lgc[aria-pressed="false"] i{opacity:.3}
+.lgc[aria-pressed="false"] .lgl{text-decoration:line-through}
+.lgdot{display:inline-block;width:9px;height:9px;border-radius:50%}
+.lgdot.lgbig{width:11px;height:11px}
+.lgpin{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:var(--muted);color:#fff;font:700 11px/1 "Onest",sans-serif;font-style:normal;box-shadow:0 0 0 1.5px var(--good)}
+.lgpin.lp-1{box-shadow:0 0 0 1.5px var(--bad);opacity:.75}
+.lgpin.lp0{width:9px;height:9px;box-shadow:none}
+.lgcirc{display:inline-block;width:12px;height:12px;border-radius:50%;border:1.5px dashed var(--accent)}
+.lgsep{width:1px;height:16px;background:var(--line);margin:0 2px}
+.lgring{display:inline-flex;align-items:center;gap:6px}
+.lgring input[type=range]{width:120px;margin:0;accent-color:var(--accent);cursor:pointer}
+.lgring output{min-width:44px;font-size:12px;color:var(--ink);font-variant-numeric:tabular-nums}
+.lglink{background:none;border:0;padding:0;color:var(--accent);font-size:12px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+/* отмеченные отели на карте: кружок цвета оценки с «+» или «−» */
+.mpin-wrap{background:none;border:0}
+.mpin{display:grid;place-items:center;box-sizing:border-box;width:22px;height:22px;border-radius:50%;border:2px solid #fff;color:#fff;font:700 15px/1 "Onest",sans-serif;box-shadow:0 0 0 2.5px var(--good),0 1px 4px rgba(0,0,0,.35)}
+.mpin.mp-minus{box-shadow:0 0 0 2.5px var(--bad),0 1px 4px rgba(0,0,0,.35);opacity:.7}
+.mpin.sel{outline:3px solid var(--ink);outline-offset:2px;opacity:1}
+/* на телефоне легенда — одна строка, листается вбок */
+@media (max-width:760px){.lg{flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:1px}.lg::-webkit-scrollbar{display:none}.lg>*{flex:none}.mapbox .mhint{display:none}}
 .mapbox figcaption i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
 .vtable{max-height:max(260px,calc(100vh - var(--dockh,68px) - 12px))}
 .vtable tr.spacer td{padding:0;border:0;background:transparent}
