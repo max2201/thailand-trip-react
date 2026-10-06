@@ -27,7 +27,7 @@ export function loadLegend(): LegendState {
   try {
     const o = JSON.parse(localStorage.getItem(KEY) || 'null')
     if (o && Array.isArray(o.off)) {
-      const r = Math.round(Number(o.r) / R_STEP) * R_STEP
+      const r = Math.round(Number(o.r) / 10) * 10
       return { off: o.off.filter((k: LegendKey) => ALL.includes(k)), r: r >= R_MIN && r <= R_MAX ? r : R_DEF }
     }
   } catch { /* ignore */ }
@@ -66,7 +66,32 @@ export function legendCounts(rows: Row[], visible: Set<number>, mark: (id: numbe
   return c
 }
 
-export const radiusText = (m: number) => (m < 1000 ? `${m} м` : `${dec((m / 1000).toFixed(1))} км`)
+export const radiusText = (m: number) => (m < 1000 ? `${m} м` : `${dec((m / 1000).toFixed(m % 100 ? 2 : 1))} км`)
+
+/**
+ * Радиус из текста: «1,5», «1.5 км», «800», «800 м». Без единиц: до 10 — километры, больше — метры.
+ * Округляем до 10 м и держим в пределах 100 м — 5 км. Непонятный текст — null.
+ */
+export function parseRadius(text: string): number | null {
+  const m = text.trim().toLowerCase().replace(',', '.').replace(/\s+/g, '').match(/^(\d+(?:\.\d+)?|\.\d+)(км|km|к|k|м|m)?$/)
+  if (!m) return null
+  const v = parseFloat(m[1]), u = m[2]
+  const meters = u === 'м' || u === 'm' || (!u && v > 10) ? v : v * 1000
+  return Math.min(R_MAX, Math.max(R_MIN, Math.round(meters / 10) * 10))
+}
+
+/**
+ * Общее состояние легенды: карта его меняет, а флажок «Только в радиусе» в фильтрах читает радиус.
+ * Не зависит от фреймворка — как и хранилище отметок, компоненты подписываются через subscribe().
+ */
+class LegendStore {
+  private state: LegendState = loadLegend()
+  private listeners = new Set<() => void>()
+  subscribe = (fn: () => void) => { this.listeners.add(fn); return () => { this.listeners.delete(fn) } }
+  get = () => this.state
+  set = (s: LegendState) => { this.state = s; saveLegend(s); this.listeners.forEach((f) => f()) }
+}
+export const legendStore = new LegendStore()
 
 /** Значок отмеченного отеля: кружок цвета оценки с «+» или «−» внутри. */
 export function pinHtml(mark: number, fill: string, selected: boolean) {

@@ -2,7 +2,7 @@ import type { Row, Stop } from './types'
 
 export type FlagKey =
   | 'noinsect' | 'nosmell' | 'nodorm' | 'ownbath' | 'balcony' | 'balroom' | 'free' | 'gem'
-  | 'plusonly' | 'anyplus' | 'hideminus' | 'saved'
+  | 'plusonly' | 'anyplus' | 'hideminus' | 'saved' | 'inradius'
 export type RangeKey = 'pmin' | 'pmax' | 'mmin' | 'mmax' | 'tmin' | 'tmax' | 'kmax' | 'rmin'
 export type SortKey =
   | 'mark' | 'rank' | 'name' | 'my' | 'night' | 'free' | 'km' | 'brief' | 'pr' | 'co' | 'flag'
@@ -21,7 +21,7 @@ export interface Filters {
 export const FLAG_LABELS: [FlagKey, string][] = [
   ['noinsect', 'Без насекомых'], ['nosmell', 'Без запаха и сырости'], ['nodorm', 'Скрыть койки'],
   ['ownbath', 'Свой санузел'], ['balcony', 'С балконом'], ['balroom', 'Балкон в самом дешёвом номере'],
-  ['free', 'Бесплатная отмена'], ['gem', 'Только находки'], ['plusonly', 'Только с моим плюсом'],
+  ['free', 'Бесплатная отмена'], ['gem', 'Только находки'], ['inradius', 'Только в радиусе'], ['plusonly', 'Только с моим плюсом'],
   ['anyplus', 'Плюс у кого-то из нас'], ['hideminus', 'Скрыть с минусом'], ['saved', 'Мои сохранённые на trip.com'],
 ]
 export const ASC_FIRST: SortKey[] = ['mark', 'km', 'night', 'rank', 'name', 'free', 'ng', 'ns', 'flag']
@@ -38,7 +38,8 @@ export interface MarkView {
 const inRange = (v: number | null, lo?: number, hi?: number) =>
   !((lo != null && (v == null || v < lo)) || (hi != null && (v == null || v > hi)))
 
-export function passes(r: Row, f: Filters, marks: MarkView) {
+/** radiusM — радиус круга на карте (в метрах): его использует флажок «Только в радиусе». */
+export function passes(r: Row, f: Filters, marks: MarkView, radiusM?: number) {
   if (f.q && !r.nm.toLowerCase().includes(f.q.toLowerCase())) return false
   const plan = r.anchor || r.proposed
   if (f.zones.length && !f.zones.includes(r.z) && !plan) return false
@@ -46,6 +47,7 @@ export function passes(r: Row, f: Filters, marks: MarkView) {
   const R = f.ranges
   if (!inRange(r.night, R.pmin, R.pmax) || !inRange(r.my, R.mmin, R.mmax) || !inRange(r.sc, R.tmin, R.tmax)) return false
   if (R.kmax != null && (r.km == null || r.km > R.kmax)) return false
+  if (radiusM != null && f.flags.includes('inradius') && (r.km == null || r.km * 1000 > radiusM)) return false
   if (R.rmin != null && r.an < R.rmin) return false
   const has = (k: FlagKey) => f.flags.includes(k)
   if (has('noinsect') && (r.ins > 0 || !r.an)) return false
@@ -78,9 +80,9 @@ export function sortValue(r: Row, k: SortKey, marks: MarkView): number | string 
   }
 }
 
-export function applyFilters(rows: Row[], f: Filters, marks: MarkView) {
+export function applyFilters(rows: Row[], f: Filters, marks: MarkView, radiusM?: number) {
   // «Наш» отель идёт в общем списке и сортируется как все (проходит любые фильтры, кроме поиска по названию).
-  const list = rows.filter((r) => passes(r, f, marks))
+  const list = rows.filter((r) => passes(r, f, marks, radiusM))
   list.sort((a, b) => {
     const x = sortValue(a, f.sort, marks), y = sortValue(b, f.sort, marks)
     if (x == null && y == null) return 0
@@ -111,7 +113,7 @@ export function decodeFilters(raw: string | null | undefined, stop: Stop): Filte
     if (typeof o.q === 'string') f.q = o.q
     if (Array.isArray(o.z)) f.zones = o.z
     if (Array.isArray(o.t)) f.types = o.t
-    if (Array.isArray(o.f)) f.flags = o.f
+    if (Array.isArray(o.f)) f.flags = o.f.filter((k: FlagKey) => FLAG_LABELS.some(([x]) => x === k))
     if (o.r && typeof o.r === 'object') f.ranges = o.r
     if (Array.isArray(o.s)) { f.sort = o.s[0]; f.dir = o.s[1] === 1 ? 1 : -1 }
   } catch { /* битая ссылка — просто фильтры по умолчанию */ }
