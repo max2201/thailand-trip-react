@@ -16,11 +16,11 @@ const COLS: [SortKey, string, string][] = [
 ]
 
 interface Props {
-  list: Row[]; pin: Row | undefined; stop: Stop; filters: Filters; selected: number | null
+  list: Row[]; stop: Stop; filters: Filters; selected: number | null
   onSort: (k: SortKey, dir: 1 | -1) => void; onSelect: (id: number) => void
 }
 
-export function HotelsTable({ list, pin, stop, filters, selected, onSort, onSelect }: Props) {
+export function HotelsTable({ list, stop, filters, selected, onSort, onSelect }: Props) {
   const store = useMarks()
   const box = useRef<HTMLDivElement>(null)
   const table = useRef<HTMLTableElement>(null)
@@ -40,7 +40,7 @@ export function HotelsTable({ list, pin, stop, filters, selected, onSort, onSele
   const padTop = items.length ? items[0].start - headH : 0
   const padBottom = items.length ? virt.getTotalSize() - items[items.length - 1].end : 0
 
-  // Закреплённые столбцы и строка «нашего» отеля: меряем реальные размеры после отрисовки.
+  // Закреплённые столбцы: меряем реальные размеры после отрисовки.
   useLayoutEffect(() => {
     const t = table.current
     if (!t) return
@@ -50,10 +50,7 @@ export function HotelsTable({ list, pin, stop, filters, selected, onSort, onSele
       const lefts: number[] = []
       for (let i = 0; i < 3; i++) { lefts.push(l); l += th[i]?.getBoundingClientRect().width ?? 0 }
       setLeft((prev) => (prev.join() === lefts.join() ? prev : lefts))
-      const thead = t.querySelector('thead')?.getBoundingClientRect().height ?? 52
-      const pinH = t.querySelector<HTMLElement>('tr.pinrow')?.getBoundingClientRect().height ?? 0
-      t.style.setProperty('--thh', thead + 'px')
-      setHeadH(Math.round(thead + pinH))
+      setHeadH(Math.round(t.querySelector('thead')?.getBoundingClientRect().height ?? 52))
     }
     const ro = new ResizeObserver(measure)
     ro.observe(t)
@@ -65,7 +62,6 @@ export function HotelsTable({ list, pin, stop, filters, selected, onSort, onSele
     if (selected == null) return
     const i = list.findIndex((r) => r.id === selected)
     if (i >= 0) virt.scrollToIndex(i, { align: 'center' })
-    else if (pin?.id === selected) box.current?.scrollTo({ top: 0, behavior: 'smooth' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected])
   useEffect(() => { box.current?.scrollTo({ top: 0 }) }, [filters.sort, filters.dir, list.length])
@@ -76,7 +72,7 @@ export function HotelsTable({ list, pin, stop, filters, selected, onSort, onSele
   }
   const rowClass = (r: Row) => {
     const m = store.mine(stop.id, r.id)
-    return [r.anchor ? 'pinrow' : '', r.proposed ? 'mark' : '', m === 1 ? 'plus' : m === -1 ? 'minus' : '', selected === r.id ? 'sel' : ''].join(' ')
+    return [r.anchor ? 'anchorrow' : '', r.proposed ? 'mark' : '', m === 1 ? 'plus' : m === -1 ? 'minus' : '', selected === r.id ? 'sel' : ''].join(' ')
   }
   const nightsLabel = `за ${stop.nights} ${plural(stop.nights, 'ночь', 'ночи', 'ночей')} ниже`
 
@@ -96,7 +92,6 @@ export function HotelsTable({ list, pin, stop, filters, selected, onSort, onSele
           </tr>
         </thead>
         <tbody>
-          {pin && <tr className={rowClass(pin)} onClick={() => onSelect(pin.id)}><HotelCells r={pin} stop={stop} left={left} /></tr>}
           {padTop > 0 && <tr className="spacer"><td colSpan={20} style={{ height: padTop }} /></tr>}
           {items.map((it) => {
             const r = list[it.index]

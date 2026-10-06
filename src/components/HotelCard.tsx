@@ -8,7 +8,7 @@ import { useMarks } from '../hooks/useMarks'
 export function HotelCard({ r, stop, selected }: { r: Row; stop: Stop; selected: boolean }) {
   const store = useMarks()
   const mark = store.mine(stop.id, r.id)
-  const cls = ['hcard', r.anchor ? 'pin' : '', mark === 1 ? 'plus' : mark === -1 ? 'minus' : '', selected ? 'sel' : ''].join(' ')
+  const cls = ['hcard', r.anchor ? 'anchor' : '', mark === 1 ? 'plus' : mark === -1 ? 'minus' : '', selected ? 'sel' : ''].join(' ')
   return (
     <article id={'c' + r.id} className={cls}>
       <div className="hcard-top">

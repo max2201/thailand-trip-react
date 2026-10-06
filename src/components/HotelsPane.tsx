@@ -22,7 +22,6 @@ export function HotelsPane({ stop, data, guide, filters }: { stop: Stop; data: S
   const list = useMemo(() => applyFilters(data.rows, filters, {
     mine: (id) => store.mine(stop.id, id), anyPlus: (id) => store.anyPlus(stop.id, id),
   }), [data.rows, filters, store, store.version, stop.id]) // eslint-disable-line react-hooks/exhaustive-deps
-  const pin = useMemo(() => data.rows.find((r) => r.anchor), [data.rows])
   const visible = useMemo(() => new Set(list.map((r) => r.id)), [list])
 
   const [view, setView] = useState<'table' | 'cards'>(() => {
@@ -67,21 +66,18 @@ export function HotelsPane({ stop, data, guide, filters }: { stop: Stop; data: S
         </div>
         <button className="link" type="button" onClick={() => setShowMap((v) => !v)}>{showMap ? 'Скрыть карту' : 'Показать карту'}</button>
       </div>
-      <div className={showMap ? 'hgrid2' : ''} style={showMap ? undefined : { marginTop: 12 }}>
-        <div>
-          {view === 'table' ? (
-            <HotelsTable list={list} pin={pin} stop={stop} filters={filters} selected={selected} onSelect={select}
-              onSort={(sort, dir) => setFilters((x) => ({ ...x, sort, dir }))} />
-          ) : (
-            <div className="cards">
-              {pin && <HotelCard r={pin} stop={stop} selected={selected === pin.id} />}
-              {list.slice(0, cardLimit).map((r) => <HotelCard key={r.id} r={r} stop={stop} selected={selected === r.id} />)}
-              {list.length > cardLimit && <button className="more" type="button" onClick={() => setCardLimit((n) => n + 40)}>Показать ещё {Math.min(40, list.length - cardLimit)}</button>}
-              {!list.length && <p className="empty">Под эти фильтры ничего не подходит.</p>}
-            </div>
-          )}
-        </div>
+      <div className={'hstack ' + (view === 'cards' ? 'hs-cards' : 'hs-table')}>
         {showMap && <HotelMap rows={data.rows} visible={visible} stop={stop} selected={selected} onSelect={select} />}
+        {view === 'table' ? (
+          <HotelsTable list={list} stop={stop} filters={filters} selected={selected} onSelect={select}
+            onSort={(sort, dir) => setFilters((x) => ({ ...x, sort, dir }))} />
+        ) : (
+          <div className="cards">
+            {list.slice(0, cardLimit).map((r) => <HotelCard key={r.id} r={r} stop={stop} selected={selected === r.id} />)}
+            {list.length > cardLimit && <button className="more" type="button" onClick={() => setCardLimit((n) => n + 40)}>Показать ещё {Math.min(40, list.length - cardLimit)}</button>}
+            {!list.length && <p className="empty">Под эти фильтры ничего не подходит.</p>}
+          </div>
+        )}
       </div>
     </>
   )
