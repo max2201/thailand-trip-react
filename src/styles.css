@@ -144,10 +144,9 @@ tbody tr.minus td.name>*{opacity:.5}
 .brief{min-width:300px;max-width:340px;font-size:13.5px;line-height:1.45;display:grid;gap:6px}
 .brief p{margin:0}
 .bk-good{color:var(--good)}.bk-bad{color:var(--bad)}.bk-muted{color:var(--muted)}
-/* pinned "наш отель" row */
-tbody tr.pinrow td{position:sticky;top:var(--thh,52px);z-index:2;background:color-mix(in srgb,var(--ink) 7%,var(--surface));border-bottom:2px solid var(--ink)}
-tbody tr.pinrow td.sticky{z-index:3}
-tbody tr.pinrow td{max-height:none}
+/* строка «нашего» отеля: идёт в общем порядке, просто выделена */
+tbody tr.anchorrow td{background:color-mix(in srgb,var(--ink) 7%,var(--surface))}
+tbody tr.anchorrow td:first-child{box-shadow:inset 3px 0 0 var(--ink)}
 .alink{display:inline-block;margin-top:6px;background:none;border:none;padding:0;color:var(--accent);font-size:12.5px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:color-mix(in srgb,var(--accent) 45%,transparent)}
 .alink:hover{text-decoration-color:var(--accent)}
 .reset-card{display:flex;flex-direction:column;justify-content:center}
@@ -228,17 +227,31 @@ footer{margin-top:18px;color:var(--muted);font-size:13px}
 .seg-toggle{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
 .seg-toggle button{border:0;background:none;padding:7px 12px;cursor:pointer;font-size:13.5px;color:var(--muted)}
 .seg-toggle button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
-.hgrid2{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:14px;margin-top:12px;align-items:start}
-.mapbox{position:sticky;top:10px;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-.mapbox .leaflet-container{height:440px;width:100%;background:var(--line-soft);font:inherit}
-.mapbox figcaption{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted);padding:8px 10px}
+/* карта над списком отелей.
+   Таблица: карта и таблица — одна панель на высоту экрана, строки листаются внутри, карта всегда над ними.
+   Карточки: карта залипает сверху, карточки уезжают под неё. */
+.hstack{margin-top:12px}
+.mapdock{position:relative;z-index:30;background:var(--paper);padding:8px 0 10px;margin-top:-8px}
+.hstack.hs-cards .mapdock{position:sticky;top:0}
+.mapbox{position:relative;margin:0;max-width:100%;min-width:260px;min-height:160px;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.mapcanvas{flex:1 1 auto;min-height:0}
+.mapbox .leaflet-container{width:100%;background:var(--line-soft);font:inherit}
+.mapbox figcaption{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:12px;color:var(--muted);padding:7px 34px 7px 10px;border-top:1px solid var(--line-soft)}
+.mapbox .mhint{margin-left:auto;opacity:.75}
+.mapbox .mreset{margin-left:auto;background:none;border:0;padding:0;color:var(--accent);font-size:12px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.mresize{position:absolute;right:0;bottom:0;z-index:2;width:30px;height:30px;padding:0;border:0;background:none;cursor:nwse-resize;touch-action:none;color:var(--muted);display:grid;place-items:center;border-radius:0 0 14px 0}
+.mresize svg{width:14px;height:14px;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;fill:none}
+.mresize:hover,.mresize:focus-visible{color:var(--accent);background:var(--accent-soft)}
+body.resizing{cursor:nwse-resize;user-select:none}
+body.resizing .mapcanvas{pointer-events:none}
+.hstack>.cards{margin-top:0}
 .mapbox figcaption i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
-.vtable{max-height:calc(100vh - 80px)}
+.vtable{max-height:max(260px,calc(100vh - var(--dockh,68px) - 12px))}
 .vtable tr.spacer td{padding:0;border:0;background:transparent}
 tbody tr.sel td{outline:2px solid var(--accent);outline-offset:-2px}
 .cards{display:grid;gap:10px;margin-top:12px}
 .hcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:10px}
-.hcard.pin{border:2px solid var(--ink)}
+.hcard.anchor{border:2px solid var(--ink)}
 .hcard.plus{border-color:var(--good);box-shadow:inset 0 0 0 1px var(--good)}
 .hcard.minus{opacity:.55}
 .hcard-top{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start}
@@ -251,7 +264,6 @@ tbody tr.sel td{outline:2px solid var(--accent);outline-offset:-2px}
 .hcard .twocol{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mk-wrap{display:grid;justify-items:center;gap:4px}
 .err{padding:16px;border-radius:12px;background:var(--bad-soft);color:var(--bad)}
-@media (max-width:1100px){.hgrid2{grid-template-columns:1fr}.mapbox{position:relative;top:0}.mapbox .leaflet-container{height:320px}}
 @media (max-width:640px){.hcard .twocol{grid-template-columns:1fr}}
 .leaflet-tooltip{font:13px/1.35 "Onest",system-ui,sans-serif}
 .fw-badge{font:600 12px/1 "Onest",sans-serif;padding:6px 10px;border-radius:999px;background:var(--good-soft);color:var(--good)}
