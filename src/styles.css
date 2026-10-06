@@ -120,6 +120,16 @@ ul.pc li{padding-left:16px;position:relative}ul.pc li::before{position:absolute;
 ul.pros li::before{content:"+";color:var(--good)}ul.cons li::before{content:"−";color:var(--bad)}
 .badges{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}.badges span{font-size:11.5px;padding:1px 7px;border-radius:6px;white-space:nowrap}
 .bg-gem{background:var(--accent);color:#fff}.bg-saved{background:var(--accent-soft);color:var(--accent)}.bg-bal{background:var(--good-soft);color:var(--good)}.bg-plan{background:var(--ink);color:var(--paper)}.bg-warn{background:var(--warn-soft);color:var(--warn)}
+/* отметки самого trip.com: рейтинг, значок партнёра, «новый», реклама, акции, выводы из отзывов */
+.tcm{min-width:190px;max-width:240px;display:grid;gap:5px;font-size:12.5px;line-height:1.4}
+.tcchips{display:flex;flex-wrap:wrap;gap:4px}
+.tcc{font-size:11.5px;padding:1px 7px;border-radius:6px;white-space:nowrap;cursor:default}
+.tc-award{background:var(--warn-soft);color:var(--warn);font-weight:600}
+.tc-partner{background:color-mix(in srgb,var(--c-pt) 14%,var(--surface));color:var(--c-pt)}
+.tc-new{background:var(--good-soft);color:var(--good)}
+.tc-ad{border:1px dashed var(--line);color:var(--muted)}
+.tcline{color:var(--muted)}.tcline b{color:var(--ink);font-weight:600}
+.hcard .tcm{max-width:none;min-width:0;margin-top:6px}
 .more{display:block;margin:12px auto 4px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:9px 18px;cursor:pointer}
 .empty{padding:40px;text-align:center;color:var(--muted)}
 
