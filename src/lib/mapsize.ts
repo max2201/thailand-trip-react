@@ -1,7 +1,8 @@
 /**
  * Размер карты над таблицей. Пользователь тянет за уголок (мышью или пальцем),
  * размер запоминается в localStorage этого браузера.
- * w = null — карта во всю ширину (подстраивается под окно).
+ * w — ширина блока карты (null — во всю ширину, подстраивается под окно),
+ * h — высота самой карты, без легенды под ней (легенда на узком экране бывает в несколько строк).
  */
 export interface MapSize { w: number | null; h: number }
 
@@ -11,7 +12,7 @@ export const MIN_H = 160
 const STEP = 24
 const maxH = () => Math.round(window.innerHeight * 0.8)
 
-export const defaultMapSize = (): MapSize => ({ w: null, h: window.matchMedia('(max-width: 760px)').matches ? 220 : 320 })
+export const defaultMapSize = (): MapSize => ({ w: null, h: window.matchMedia('(max-width: 760px)').matches ? 200 : 300 })
 
 export function loadMapSize(): MapSize | null {
   try {
@@ -34,26 +35,25 @@ export function clampMapSize(w: number, h: number, maxW: number): MapSize {
   return { w: cw >= maxW - 6 ? null : Math.round(cw), h: Math.round(Math.min(maxH(), Math.max(MIN_H, h))) }
 }
 
-/** Применить размер к блоку карты. */
-export function sizeStyle(s: MapSize) {
-  return { width: s.w == null ? '100%' : s.w + 'px', height: s.h + 'px' }
-}
+/** Ширина — блоку карты, высота — самой карте. */
+export const boxStyle = (s: MapSize) => ({ width: s.w == null ? '100%' : s.w + 'px' })
+export const canvasStyle = (s: MapSize) => ({ height: s.h + 'px' })
 
 /**
  * Тянем за уголок. Pointer events одинаково работают с мышью, пальцем и пером.
- * handle — сам уголок (на нём ловим указатель), box — блок карты.
+ * handle — сам уголок (на нём ловим указатель), box — блок карты, canvas — сама карта.
  * onMove вызывается на каждом движении, onEnd — когда отпустили.
  */
-export function startResize(e: PointerEvent, handle: HTMLElement, box: HTMLElement, onMove: (s: MapSize) => void, onEnd: (s: MapSize) => void) {
+export function startResize(e: PointerEvent, handle: HTMLElement, box: HTMLElement, canvas: HTMLElement, onMove: (s: MapSize) => void, onEnd: (s: MapSize) => void) {
   if (e.button !== 0) return
   e.preventDefault()
   handle.setPointerCapture(e.pointerId)
-  const r = box.getBoundingClientRect()
-  const maxW = box.parentElement?.clientWidth ?? r.width
+  const w0 = box.getBoundingClientRect().width, h0 = canvas.getBoundingClientRect().height
+  const maxW = box.parentElement?.clientWidth ?? w0
   const x0 = e.clientX, y0 = e.clientY
-  let cur = clampMapSize(r.width, r.height, maxW)
+  let cur = clampMapSize(w0, h0, maxW)
   const move = (ev: PointerEvent) => {
-    cur = clampMapSize(r.width + ev.clientX - x0, r.height + ev.clientY - y0, maxW)
+    cur = clampMapSize(w0 + ev.clientX - x0, h0 + ev.clientY - y0, maxW)
     onMove(cur)
   }
   const up = () => {
@@ -70,11 +70,11 @@ export function startResize(e: PointerEvent, handle: HTMLElement, box: HTMLEleme
 }
 
 /** Стрелки на уголке: ←/→ — ширина, ↑/↓ — высота. Возвращает новый размер или null, если клавиша не наша. */
-export function keyResize(e: KeyboardEvent, box: HTMLElement): MapSize | null {
+export function keyResize(e: KeyboardEvent, box: HTMLElement, canvas: HTMLElement): MapSize | null {
   const d: Record<string, [number, number]> = { ArrowLeft: [-STEP, 0], ArrowRight: [STEP, 0], ArrowUp: [0, -STEP], ArrowDown: [0, STEP] }
   const v = d[e.key]
   if (!v) return null
   e.preventDefault()
-  const r = box.getBoundingClientRect()
-  return clampMapSize(r.width + v[0], r.height + v[1], box.parentElement?.clientWidth ?? r.width)
+  const w = box.getBoundingClientRect().width
+  return clampMapSize(w + v[0], canvas.getBoundingClientRect().height + v[1], box.parentElement?.clientWidth ?? w)
 }
