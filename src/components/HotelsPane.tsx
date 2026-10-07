@@ -9,6 +9,9 @@ import { FiltersPanel } from './FiltersPanel'
 import { HotelsTable } from './HotelsTable'
 import { HotelCard } from './HotelCard'
 import { HotelMap } from './HotelMap'
+import { ReportDialog } from './ReportDialog'
+import { useReports } from '../hooks/useReports'
+import { isOpen, statusText } from '../lib/reports'
 
 const VKEY = 'thai-trip-view'
 const narrow = () => window.matchMedia('(max-width: 760px)').matches
@@ -45,6 +48,12 @@ export function HotelsPane({ stop, data, guide, filters }: { stop: Stop; data: S
     }
   }
 
+  // Подробный отчёт по моим плюсам: кнопка показывает, сколько плюсов и как дела с последней заявкой.
+  const reports = useReports(stop.id)
+  const [report, setReport] = useState<{ id: string | null } | null>(null)
+  const plusCount = store.counts(stop.id).p
+  const lastMine = reports.docs.find((d) => d.name === store.myName) ?? null
+
   // Фильтры → адрес страницы (?f=…), чтобы ссылкой можно было поделиться.
   useEffect(() => {
     const t = setTimeout(() => {
@@ -67,6 +76,12 @@ export function HotelsPane({ stop, data, guide, filters }: { stop: Stop; data: S
           <button type="button" aria-pressed={view === 'cards'} onClick={() => setView('cards')}>Карточки</button>
         </div>
         <button className="link" type="button" onClick={() => setShowMap((v) => !v)}>{showMap ? 'Скрыть карту' : 'Показать карту'}</button>
+        <span className="rp-btns">
+          <button type="button" className={'rp-open' + (lastMine && isOpen(lastMine) ? ' busy' : '')} onClick={() => setReport({ id: null })}>
+            Подробный отчёт по моим плюсам<b>{plusCount}</b>
+          </button>
+          {lastMine && <button type="button" className={'rp-chip ' + lastMine.status} onClick={() => setReport({ id: lastMine.id })}>отчёт {statusText(lastMine.status)}</button>}
+        </span>
       </div>
       <div className={'hstack ' + (view === 'cards' ? 'hs-cards' : 'hs-table')}>
         {showMap && <HotelMap rows={data.rows} visible={visible} stop={stop} selected={selected} onSelect={select} />}
@@ -81,6 +96,7 @@ export function HotelsPane({ stop, data, guide, filters }: { stop: Stop; data: S
           </div>
         )}
       </div>
+      {report && <ReportDialog stop={stop} rows={data.rows} openId={report.id} onClose={() => setReport(null)} />}
     </>
   )
 }
