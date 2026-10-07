@@ -56,6 +56,8 @@ export interface Stop {
   anchor: number; anchorName: string; proposed: number; proposedName: string
   prio: string[]; note: string; events: EventTuple[]
   alat: number; alng: number; limit: number; priceCount: number
+  /** Объединённая остановка (общий взгляд на несколько отрезков): её отметки собираются из merge. */
+  virtual?: boolean; merge?: string[]
 }
 
 export interface District { z: string[]; t: string; tag: string; what: string; pro: string; con: string; who: string }

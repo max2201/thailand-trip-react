@@ -48,23 +48,47 @@ export class MarksStore {
   get needName() { return !this.myName }
   get canWrite() { return this.mode === 'shared' && !!this.uid }
 
-  mine(stop: string, id: number): 0 | 1 | -1 { return (this.marks[stop]?.[id] as Mark | undefined) ?? 0 }
+  /**
+   * Объединённые остановки (например, «Чиангмай целиком» = s2 + s4): отметки на них не хранятся отдельно,
+   * а собираются из отрезков — плюс в любом из них даёт плюс, иначе минус, если он где-то есть.
+   * Отметка, поставленная на объединённой остановке, записывается во все её отрезки.
+   */
+  private merges: Record<string, string[]> = {}
+  setMerges(m: Record<string, string[]>) { this.merges = m; this.emit() }
+  private stopMap(map: MarkMap | undefined, stop: string): Record<string, Mark> {
+    const parts = this.merges[stop]
+    if (!parts) return map?.[stop] || {}
+    const out: Record<string, Mark> = {}
+    for (const p of parts) for (const [id, v] of Object.entries(map?.[p] || {})) {
+      if (v === 1) out[id] = 1
+      else if (v === -1 && out[id] !== 1) out[id] = -1
+    }
+    return out
+  }
+  private valOf(map: MarkMap | undefined, stop: string, id: number): 0 | 1 | -1 {
+    const parts = this.merges[stop]
+    if (!parts) return (map?.[stop]?.[id] as Mark | undefined) ?? 0
+    const vals = parts.map((p) => map?.[p]?.[id])
+    return vals.includes(1) ? 1 : vals.includes(-1) ? -1 : 0
+  }
+
+  mine(stop: string, id: number): 0 | 1 | -1 { return this.valOf(this.marks, stop, id) }
   othersFor(stop: string, id: number): [string, Mark][] {
     const out: [string, Mark][] = []
-    for (const [u, m] of Object.entries(this.others)) { const v = m?.[stop]?.[id]; if (v === 1 || v === -1) out.push([u, v]) }
+    for (const [u, m] of Object.entries(this.others)) { const v = this.valOf(m, stop, id); if (v === 1 || v === -1) out.push([u, v]) }
     return out
   }
   anyPlus(stop: string, id: number) { return this.mine(stop, id) === 1 || this.othersFor(stop, id).some((x) => x[1] === 1) }
   nameOf(uid: string) { return (this.names[uid] || '').trim() || 'Участник' }
   counts(stop: string) {
     let p = 0, m = 0
-    for (const v of Object.values(this.marks[stop] || {})) { if (v === 1) p++; else if (v === -1) m++ }
+    for (const v of Object.values(this.stopMap(this.marks, stop))) { if (v === 1) p++; else if (v === -1) m++ }
     return { p, m }
   }
   othersCounts(stop: string) {
     return Object.entries(this.others).map(([u, mm]) => {
       let p = 0, n = 0
-      for (const v of Object.values(mm?.[stop] || {})) { if (v === 1) p++; else if (v === -1) n++ }
+      for (const v of Object.values(this.stopMap(mm, stop))) { if (v === 1) p++; else if (v === -1) n++ }
       return { uid: u, name: this.nameOf(u), p, m: n }
     }).filter((x) => x.p || x.m)
   }
@@ -83,12 +107,14 @@ export class MarksStore {
   cycle(stop: string, id: number) {
     const cur = this.mine(stop, id)
     const next = cur === 0 ? 1 : cur === 1 ? -1 : 0
-    this.marks[stop] = { ...(this.marks[stop] || {}) }
-    if (next) this.marks[stop][id] = next as Mark
-    else delete this.marks[stop][id]
+    for (const st of this.merges[stop] ?? [stop]) {
+      this.marks[st] = { ...(this.marks[st] || {}) }
+      if (next) this.marks[st][id] = next as Mark
+      else delete this.marks[st][id]
+    }
     this.save()
   }
-  clearStop(stop: string) { delete this.marks[stop]; this.save() }
+  clearStop(stop: string) { for (const st of this.merges[stop] ?? [stop]) delete this.marks[st]; this.save() }
 
   setName(n: string) {
     n = n.trim().slice(0, 30)
