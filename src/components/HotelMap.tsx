@@ -27,6 +27,20 @@ export function HotelMap({ rows, visible, stop, selected, onSelect }: Props) {
   const entries = useRef(new Map<number, Entry>())
   const onSelectRef = useRef(onSelect)
   onSelectRef.current = onSelect
+  // Первый клик по точке выделяет отель (как клик по строке таблицы), следующие клики по уже выделенной
+  // точке переключают мою отметку: «+» → «−» → без отметки → снова «+».
+  const selectedRef = useRef(selected)
+  selectedRef.current = selected
+  // Выделенную кликом по карте точку не двигаем к центру: она должна остаться под курсором для следующего клика.
+  const fromMap = useRef(false)
+  const onPointClick = (id: number) => {
+    if (selectedRef.current === id) store.cycle(stop.id, id)
+    else { fromMap.current = true; onSelectRef.current(id) }
+  }
+  const pointClickRef = useRef(onPointClick)
+  pointClickRef.current = onPointClick
+  // Подсказка открыта только у выбранного: прежнюю закрываем, иначе они копятся на карте.
+  const openTip = useRef<L.Layer | null>(null)
 
   // Размер: свой (сохранённый) или по умолчанию. Тянем за уголок — см. lib/mapsize.ts.
   const [custom, setCustom] = useState<MapSize | null>(loadMapSize)
@@ -83,6 +97,7 @@ export function HotelMap({ rows, visible, stop, selected, onSelect }: Props) {
       const sel = selected === r.id
       const kind = mark ? `${mark}${sel ? 's' : ''}` : '0'
       let e = es.get(r.id)
+      let created = false
       if (e && e.kind !== kind) { g.removeLayer(e.layer); es.delete(r.id); e = undefined }
       if (!shownOnMap(r, mark, visible, legend.off, selected)) {
         if (e?.on) { g.removeLayer(e.layer); e.on = false }
@@ -93,9 +108,10 @@ export function HotelMap({ rows, visible, stop, selected, onSelect }: Props) {
           ? L.marker([r.la, r.ln], { icon: L.divIcon({ className: 'mpin-wrap', html: pinHtml(mark, colorOf(r), sel), iconSize: [22, 22], iconAnchor: [11, 11] }), keyboard: false, riseOnHover: true, zIndexOffset: mark === 1 ? 500 : 0 })
           : L.circleMarker([r.la, r.ln], { radius: r.anchor ? 9 : 6, weight: 1.5, color: '#fff', fillColor: colorOf(r), fillOpacity: 0.95 })
         layer.bindTooltip('')
-        layer.on('click', () => onSelectRef.current(r.id))
+        layer.on('click', () => pointClickRef.current(r.id))
         e = { layer, kind, on: false }
         es.set(r.id, e)
+        created = true
       }
       if (!e.on) { g.addLayer(e.layer); e.on = true }
       if (e.layer instanceof L.CircleMarker) {
@@ -103,7 +119,9 @@ export function HotelMap({ rows, visible, stop, selected, onSelect }: Props) {
         if (sel || r.anchor) e.layer.bringToFront()
       }
       const others = store.othersFor(stop.id, r.id).map(([u, v]) => [store.nameOf(u), v] as [string, number])
-      e.layer.setTooltipContent(tooltipHtml(r, mark, others))
+      e.layer.setTooltipContent(tooltipHtml(r, mark, others, sel))
+      // Отметка сменилась — точка пересоздана другим значком: подсказку выбранной открываем заново
+      if (sel && created) { e.layer.openTooltip(); openTip.current = e.layer }
     }
     const c = ring.current
     if (c) {
@@ -113,12 +131,11 @@ export function HotelMap({ rows, visible, stop, selected, onSelect }: Props) {
   }, [rows, stop, visible, selected, legend, store, store.version])
 
   // Выбранный отель — к центру карты (отдельно, чтобы смена фильтров не двигала карту).
-  // Подсказка открыта только у выбранного: прежнюю закрываем, иначе они копятся на карте.
-  const openTip = useRef<L.Layer | null>(null)
   useEffect(() => {
     openTip.current?.closeTooltip(); openTip.current = null
     const e = selected != null ? entries.current.get(selected) : null
-    if (e && map.current) { map.current.panTo(e.layer.getLatLng()); e.layer.openTooltip(); openTip.current = e.layer }
+    if (e && map.current) { if (!fromMap.current) map.current.panTo(e.layer.getLatLng()); e.layer.openTooltip(); openTip.current = e.layer }
+    fromMap.current = false
   }, [selected])
 
   // Высота «шапки» с картой нужна таблице: она занимает остаток экрана под картой.
