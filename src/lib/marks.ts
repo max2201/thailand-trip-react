@@ -1,5 +1,6 @@
 import type { Mark } from './types'
-import { FIREBASE, TRIP_ID } from './config'
+import { TRIP_ID } from './config'
+import { firestore } from './fb'
 
 /**
  * Отметки «+/−»: локально (localStorage) и в общей базе Firestore.
@@ -104,11 +105,7 @@ export class MarksStore {
 
   async init() {
     try {
-      const [{ initializeApp }, fs] = await Promise.all([import('firebase/app'), import('firebase/firestore')])
-      const app = initializeApp(FIREBASE)
-      let db
-      try { db = fs.initializeFirestore(app, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) }) }
-      catch { db = fs.getFirestore(app) }
+      const { fs, db } = await firestore()
       const col = fs.collection(db, 'trips', TRIP_ID, 'people')
       this.remote = { set: (id, body) => fs.setDoc(fs.doc(col, id), body) }
       this.mode = 'shared'
