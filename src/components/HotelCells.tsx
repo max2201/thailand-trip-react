@@ -2,15 +2,16 @@ import type { Row, Stop } from '../lib/types'
 import { AMENITY, consList, tripLink } from '../lib/rows'
 import { dec, dec1, fmt } from '../lib/format'
 import { MarkButton } from './MarkButton'
+import { hoverHotel } from '../lib/hover'
 import { Badges, BriefBlock, FlagsBlock, ScoreChip, SubBar, TcMarksBlock } from './Bits'
 
 /** Ячейки одной строки (фрагмент из 23 <td>); <tr> рисует родитель. */
-export function HotelCells({ r, stop, left }: { r: Row; stop: Stop; left: number[] }) {
+export function HotelCells({ r, stop }: { r: Row; stop: Stop }) {
   return (
     <>
-      <td className="sticky mkc" style={{ left: left[0] }}><MarkButton stop={stop.id} id={r.id} /></td>
-      <td className="sticky rank" style={{ left: left[1] }}>{r.rank}</td>
-      <td className="sticky name" style={{ left: left[2] }}>
+      <td className="mkc"><MarkButton stop={stop.id} id={r.id} /></td>
+      <td className="rank">{r.rank}</td>
+      <td className="name" onMouseEnter={() => hoverHotel.set(r.id)} onMouseLeave={() => hoverHotel.set(null)}>
         <a href={tripLink(r.id, stop)} target="_blank" rel="noopener" onClick={(e) => e.stopPropagation()}>{r.nm}</a>
         <div className="meta">{r.z}{r.yr && <>, открыт в {r.yr}</>}</div>
         <Badges row={r} stop={stop} />

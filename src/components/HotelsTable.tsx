@@ -5,6 +5,7 @@ import { ASC_FIRST, type Filters, type SortKey } from '../lib/filters'
 import { plural } from '../lib/format'
 import { HotelCells } from './HotelCells'
 import { useMarks } from '../hooks/useMarks'
+import { headWidths, loadPins, pinCss, pinStyle, savePins } from '../lib/pins'
 
 const COLS: [SortKey, string, string][] = [
   ['mark', '±', ''], ['rank', '#', ''], ['name', 'Отель', ''], ['my', 'Моя оценка', 'из 10'],
@@ -25,7 +26,11 @@ export function HotelsTable({ list, stop, filters, selected, onSort, onSelect }:
   const box = useRef<HTMLDivElement>(null)
   const table = useRef<HTMLTableElement>(null)
   const [headH, setHeadH] = useState(52)
-  const [left, setLeft] = useState([0, 48, 88])
+  // Закреплённые столбцы: булавка в заголовке, положение считаем по реальным ширинам (lib/pins.ts).
+  const [pins, setPins] = useState<string[]>(loadPins)
+  const [ps] = useState(pinStyle)
+  const pinsRef = useRef(pins)
+  pinsRef.current = pins
 
   // Виртуальный скролл: рендерим только видимые строки (как в Vue-версии, но через хук).
   const virt = useVirtualizer({
@@ -40,23 +45,27 @@ export function HotelsTable({ list, stop, filters, selected, onSort, onSelect }:
   const padTop = items.length ? items[0].start - headH : 0
   const padBottom = items.length ? virt.getTotalSize() - items[items.length - 1].end : 0
 
-  // Закреплённые столбцы: меряем реальные размеры после отрисовки.
+  const measure = useRef(() => {})
+  measure.current = () => {
+    const t = table.current
+    if (!t) return
+    ps.set(pinCss(ps.scope, headWidths(t), COLS.map(([k]) => pinsRef.current.includes(k))))
+    setHeadH(Math.round(t.querySelector('thead')?.getBoundingClientRect().height ?? 52))
+  }
   useLayoutEffect(() => {
     const t = table.current
     if (!t) return
-    const measure = () => {
-      const th = t.querySelectorAll<HTMLElement>('thead th')
-      let l = 0
-      const lefts: number[] = []
-      for (let i = 0; i < 3; i++) { lefts.push(l); l += th[i]?.getBoundingClientRect().width ?? 0 }
-      setLeft((prev) => (prev.join() === lefts.join() ? prev : lefts))
-      setHeadH(Math.round(t.querySelector('thead')?.getBoundingClientRect().height ?? 52))
-    }
-    const ro = new ResizeObserver(measure)
+    const ro = new ResizeObserver(() => measure.current())
     ro.observe(t)
-    measure()
-    return () => ro.disconnect()
-  }, [])
+    measure.current()
+    return () => { ro.disconnect(); ps.destroy() }
+  }, [ps])
+  useLayoutEffect(() => { measure.current() }, [pins])
+  const togglePin = (k: string) => {
+    const next = pins.includes(k) ? pins.filter((x) => x !== k) : [...pins, k]
+    savePins(next)
+    setPins(next)
+  }
 
   useEffect(() => {
     if (selected == null) return
@@ -79,15 +88,20 @@ export function HotelsTable({ list, stop, filters, selected, onSort, onSelect }:
   const nightsLabel = `за ${stop.nights} ${plural(stop.nights, 'ночь', 'ночи', 'ночей')} ниже`
 
   return (
-    <div ref={box} className="tablebox vtable">
+    <div ref={box} className="tablebox vtable" data-pt={ps.id}>
       <table ref={table}>
         <thead>
           <tr>
             {COLS.map(([k, t, s], i) => (
-              <th key={k} className={[i < 3 ? 'sticky' : '', ['mkc', 'rank', 'name'][i] ?? ''].join(' ')} style={i < 3 ? { left: left[i] } : undefined}
+              <th key={k} className={['mkc', 'rank', 'name'][i] ?? ''}
                 aria-sort={filters.sort === k ? (filters.dir > 0 ? 'ascending' : 'descending') : undefined}>
                 <button type="button" onClick={() => sortBy(k)}>
                   <span>{t}{(s || k === 'night') && <small>{k === 'night' ? nightsLabel : s}</small>}</span><span className="arr">↕</span>
+                </button>
+                <button type="button" className="pinb" aria-pressed={pins.includes(k)} onClick={() => togglePin(k)}
+                  title={pins.includes(k) ? 'Открепить столбец' : 'Закрепить столбец: останется на виду при прокрутке вбок'}
+                  aria-label={`${pins.includes(k) ? 'Открепить' : 'Закрепить'} столбец «${t}»`}>
+                  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 1.5h4l-.6 4.2 2.6 2.3v1.3H8.7V15L8 15.8 7.3 15V9.3H4V8l2.6-2.3z" /></svg>
                 </button>
               </th>
             ))}
@@ -99,12 +113,12 @@ export function HotelsTable({ list, stop, filters, selected, onSort, onSelect }:
             const r = list[it.index]
             return (
               <tr key={it.key} ref={virt.measureElement} data-index={it.index} className={rowClass(r)} onClick={() => onSelect(r.id)}>
-                <HotelCells r={r} stop={stop} left={left} />
+                <HotelCells r={r} stop={stop} />
               </tr>
             )
           })}
           {padBottom > 0 && <tr className="spacer"><td colSpan={23} style={{ height: padBottom }} /></tr>}
-          {!list.length && <tr><td colSpan={23} className="empty">Под эти фильтры ничего не подходит. Снимите один из фильтров или нажмите «Весь город».</td></tr>}
+          {!list.length && <tr className="emptyrow"><td colSpan={23} className="empty">Под эти фильтры ничего не подходит. Снимите один из фильтров или нажмите «Весь город».</td></tr>}
         </tbody>
       </table>
     </div>

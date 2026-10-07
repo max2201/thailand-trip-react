@@ -34,14 +34,22 @@ export function RouteRibbon() {
   const nav = useRef<HTMLElement>(null)
   // На узком экране лента прокручивается — показываем активную остановку.
   useEffect(() => {
-    nav.current?.querySelector<HTMLElement>('.seg[aria-pressed="true"]')?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
+    nav.current?.querySelector<HTMLElement>('.seg[aria-pressed="true"], .segv[aria-pressed="true"]')?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
   }, [active])
   return (
     <nav ref={nav} className="route" aria-label="Маршрут">
-      <div className="ribbon">
+      <div className={`ribbon ${stops.some((s) => s.virtual) ? 'has-v' : ''}`}>
         {DAYS.map((d) => <div key={d.i} className={`day ${d.w === 0 || d.w === 6 ? 'we' : ''}`} style={{ gridColumn: d.i + 1, gridRow: 1 }}><b>{d.d}</b>{DOW[d.w]}</div>)}
         {stops.map((s) => {
           const plus = store.counts(s.id).p
+          // Объединённая остановка — тонкая плашка над отрезками, которые она собирает.
+          if (s.virtual) return (
+            <Link key={s.id} to={`/${s.id}/${tab}`} className={`segv sv-${s.city}`} style={{ gridColumn: `${dayIdx(s.ci) + 1}/${dayIdx(s.co) + 1}` }}
+              aria-pressed={active === s.id} title={`${s.title}: ${s.sub}. Отметки общие для отрезков`}>
+              <b lang="ru">{s.title}</b><span>{s.days.replace(/ декабря$/, '')}, {s.nights} {plural(s.nights, 'ночь', 'ночи', 'ночей')}</span>
+              {plus > 0 && <span className="mk">+{plus}</span>}
+            </Link>
+          )
           return (
             <Link key={s.id} to={`/${s.id}/${tab}`} className={`seg c-${s.city} ${s.nights < 2 ? 'narrow' : ''}`} style={{ gridColumn: `${dayIdx(s.ci) + 1}/${dayIdx(s.co) + 1}` }}
               aria-pressed={active === s.id} title={`${s.title}: ${s.sub}, ${s.days}`}>

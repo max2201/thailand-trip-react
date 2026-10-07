@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import L from 'leaflet'
+import { hoverHotel, setPointHover } from '../lib/hover'
 import type { Row, Stop } from '../lib/types'
 import { scoreColor } from '../lib/format'
 import { boxStyle, canvasStyle, defaultMapSize, keyResize, loadMapSize, saveMapSize, startResize, type MapSize } from '../lib/mapsize'
@@ -148,12 +149,21 @@ export function HotelMap({ rows, visible, stop, selected, onSelect, area, onArea
       // Отметка сменилась — точка пересоздана другим значком: подсказку выбранной открываем заново
       if (sel && created) { e.layer.openTooltip(); openTip.current = e.layer }
     }
+    const h = hoverHotel.get()
+    if (h != null) setPointHover(es.get(h)?.layer, true, cssVar('--ink'))
     const c = ring.current
     if (c) {
       c.setRadius(legend.r)
       if (!legend.off.includes('ring')) { if (!m.hasLayer(c)) c.addTo(m) } else c.remove()
     }
   }, [rows, stop, visible, selected, legend, store, store.version])
+
+  // Наведение на название отеля в таблице: точка подрастает
+  useEffect(() => hoverHotel.on((id, prev) => {
+    const es = entries.current
+    if (prev != null) setPointHover(es.get(prev)?.layer, false, '')
+    if (id != null) setPointHover(es.get(id)?.layer, true, cssVar('--ink'))
+  }), [])
 
   // Выбранный отель — к центру карты (отдельно, чтобы смена фильтров не двигала карту).
   useEffect(() => {

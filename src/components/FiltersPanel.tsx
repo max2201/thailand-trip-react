@@ -57,7 +57,7 @@ export function FiltersPanel({ filters: f, setFilters, rows, stop, guide, shown,
     if (!n) { setClearLabel('Отметок пока нет'); setTimeout(resetLabel, 1500); return }
     if (armed.current) { store.clearStop(stop.id); armed.current = false; resetLabel(); return }
     armed.current = true
-    setClearLabel(`Точно удалить ${n} ${plural(n, 'отметку', 'отметки', 'отметок')}? Нажмите ещё раз`)
+    setClearLabel(`Точно удалить ${n} ${plural(n, 'отметку', 'отметки', 'отметок')}${stop.merge ? ' во всех отрезках' : ''}? Нажмите ещё раз`)
     setTimeout(() => { if (armed.current) { armed.current = false; resetLabel() } }, 4000)
   }
   const tcCounts = useMemo(() => Object.fromEntries(TC_LABELS.map(([t]) => [t, rows.filter((r) => tcHas(r.tc, t)).length])) as Record<TcKey, number>, [rows])
