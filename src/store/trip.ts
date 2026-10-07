@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { Stop, StopRows, TripIndex } from '../lib/types'
 import { loadCity, loadIndex, loadPrices } from '../lib/data'
 import { buildRows } from '../lib/rows'
+import { marksStore } from '../lib/marks'
 import { type Filters, decodeFilters } from '../lib/filters'
 
 /**
@@ -25,7 +26,11 @@ export const useTrip = create<TripState>((set, get) => ({
   rows: {},
   filters: {},
   init: async () => {
-    try { set({ index: await loadIndex() }) } catch (e) { set({ error: String(e) }) }
+    try {
+      const index = await loadIndex()
+      marksStore.setMerges(Object.fromEntries(index.stops.filter((x) => x.merge?.length).map((x) => [x.id, x.merge!])))
+      set({ index })
+    } catch (e) { set({ error: String(e) }) }
   },
   ensureStop: async (stop) => {
     if (get().rows[stop.id]) return
