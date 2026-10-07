@@ -7,7 +7,8 @@ import type { Row } from './types'
 import { dec, dec1, fmt } from './format'
 
 export type LegendKey = 'g9' | 'g8' | 'glow' | 'gnone' | 'plus' | 'minus' | 'nomark' | 'anchor' | 'ring'
-export interface LegendState { off: LegendKey[]; r: number }
+/** off — выключенные группы, r — радиус круга (м), all — показывать отметки всех участников, а не только мои. */
+export interface LegendState { off: LegendKey[]; r: number; all: boolean }
 
 /** Группы по оценке: ключ, подпись, CSS-переменная цвета. */
 export const LEGEND_SCORE: [LegendKey, string, string][] = [
@@ -28,10 +29,10 @@ export function loadLegend(): LegendState {
     const o = JSON.parse(localStorage.getItem(KEY) || 'null')
     if (o && Array.isArray(o.off)) {
       const r = Math.round(Number(o.r) / 10) * 10
-      return { off: o.off.filter((k: LegendKey) => ALL.includes(k)), r: r >= R_MIN && r <= R_MAX ? r : R_DEF }
+      return { off: o.off.filter((k: LegendKey) => ALL.includes(k)), r: r >= R_MIN && r <= R_MAX ? r : R_DEF, all: !!o.all }
     }
   } catch { /* ignore */ }
-  return { off: [], r: R_DEF }
+  return { off: [], r: R_DEF, all: false }
 }
 export function saveLegend(s: LegendState) {
   try { localStorage.setItem(KEY, JSON.stringify(s)) } catch { /* ignore */ }
@@ -42,6 +43,15 @@ export function toggleKey(s: LegendState, k: LegendKey): LegendState {
 
 export const scoreKey = (my: number | null): LegendKey => (my == null ? 'gnone' : my >= 9 ? 'g9' : my >= 8 ? 'g8' : 'glow')
 export const markKey = (m: number): LegendKey => (m === 1 ? 'plus' : m === -1 ? 'minus' : 'nomark')
+
+/**
+ * Отметка для карты. Режим «только мои» — моя отметка. Режим «все» — моя, а если её нет,
+ * то чужая: плюс, если кто-то поставил плюс, иначе минус, если кто-то поставил минус.
+ */
+export function shownMark(mine: number, others: [string, number][], all: boolean): number {
+  if (mine || !all) return mine
+  return others.some((x) => x[1] === 1) ? 1 : others.some((x) => x[1] === -1) ? -1 : 0
+}
 
 /**
  * Показывать ли отель на карте. visible — отели, прошедшие фильтры таблицы.
@@ -93,9 +103,9 @@ class LegendStore {
 }
 export const legendStore = new LegendStore()
 
-/** Значок отмеченного отеля: кружок цвета оценки с «+» или «−» внутри. */
-export function pinHtml(mark: number, fill: string, selected: boolean) {
-  return `<span class="mpin ${mark === 1 ? 'mp-plus' : 'mp-minus'}${selected ? ' sel' : ''}" style="background:${fill}">${mark === 1 ? '+' : '−'}</span>`
+/** Значок отмеченного отеля: кружок цвета оценки с «+» или «−» внутри. Чужая отметка — с пунктирной обводкой. */
+export function pinHtml(mark: number, fill: string, selected: boolean, foreign = false) {
+  return `<span class="mpin ${mark === 1 ? 'mp-plus' : 'mp-minus'}${foreign ? ' mp-oth' : ''}${selected ? ' sel' : ''}" style="background:${fill}">${mark === 1 ? '+' : '−'}</span>`
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch] as string)

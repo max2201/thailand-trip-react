@@ -27,7 +27,8 @@ export interface Hotel {
   dm: number; dmr: number   // сырость
   ins: number; insr: number // насекомые всего
   am: string[]; amn: number // удобства
-  yr: string
+  yr: string           // год открытия
+  ry?: string          // год последнего ремонта
   pr: string[]; co: string[] // плюсы / минусы
   cp: [number, number, number, number, number] | null // база, флаги, негатив, динамика, мало отзывов
   sv?: number           // в сохранённых на trip.com

@@ -45,6 +45,9 @@ export function buildRows(stop: Stop, hotels: Hotel[], prices: Prices): StopRows
       dorm: !!p[4], shared: !!p[5], nowin: !!p[6], tc: p[7] || null, km,
       anchor: +id === stop.anchor, proposed: +id === stop.proposed,
     } as Row
+    const tcYear = (re: RegExp) => (r.tc?.n ?? []).map((x) => x.match(re)?.[1]).find(Boolean) ?? ''
+    r.yr = h.yr || tcYear(/Работает с\D*(\d{4})/)
+    r.ry = h.ry || tcYear(/Отремонтирован\D*(\d{4})/)
     r.balRoom = BAL.test(room) && !NO_BAL.test(room)
     r.balRev = (h.bal || 0) >= 2 || ((h.bal || 0) >= 1 && h.an < 20)
     r.balcony = r.balRoom || r.balRev

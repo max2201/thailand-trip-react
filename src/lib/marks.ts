@@ -169,3 +169,4 @@ export class MarksStore {
 }
 
 export const marksStore = new MarksStore()
+if (typeof window !== 'undefined') (window as unknown as { __ttMarks: MarksStore }).__ttMarks = marksStore // для автотестов
