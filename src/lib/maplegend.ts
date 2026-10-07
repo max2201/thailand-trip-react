@@ -100,12 +100,18 @@ export function pinHtml(mark: number, fill: string, selected: boolean) {
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch] as string)
 
-/** Подсказка над точкой: оценка, расстояние, цена и чьи отметки. */
-export function tooltipHtml(r: Row, mark: number, others: [string, number][]) {
+const NEXT: Record<number, string> = { 0: 'поставить «+»', 1: 'поменять на «−»', [-1]: 'снять отметку' }
+
+/**
+ * Подсказка над точкой: оценка, расстояние, цена и чьи отметки.
+ * У выбранной точки — что сделает следующий клик (клик по выбранной точке переключает мою отметку).
+ */
+export function tooltipHtml(r: Row, mark: number, others: [string, number][], selected = false) {
   let s = `<b>${esc(r.nm)}</b>: ${r.my == null ? 'нет оценки' : dec1(r.my)}`
   if (r.km != null && !r.anchor) s += `, ${dec(r.km.toFixed(1))} км`
   if (r.night) s += `, ${fmt(r.night)} ₽`
   const marks = [...(mark ? [['ваш', mark] as [string, number]] : []), ...others]
   if (marks.length) s += '<br>' + marks.map(([n, v]) => `${esc(n)} ${v === 1 ? '+' : '−'}`).join(', ')
+  if (selected) s += `<br><small style="color:#5D6977">ещё клик по точке — ${NEXT[mark] ?? NEXT[0]}</small>`
   return s
 }
