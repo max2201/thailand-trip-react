@@ -70,6 +70,15 @@ export function catBar(c: RCat) {
   return { pos: (100 * c.pos) / n, mix: (100 * c.mix) / n, neg: (100 * c.neg) / n }
 }
 
+/** Большой отчёт обработчик сжимает, чтобы влезть в документ Firestore (до 1 МБ): «gz:» + base64 от gzip. */
+async function unzip(b64: string) {
+  const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
+  return new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).text()
+}
+function parseReport(txt: string): Report | null {
+  try { const r = JSON.parse(txt) as Report; return r && Array.isArray(r.hotels) ? r : null } catch { return null }
+}
+
 function toDoc(id: string, o: Record<string, unknown>): ReportDoc {
   return {
     id, stop: String(o.stop ?? ''), hotels: Array.isArray(o.hotels) ? o.hotels.map(Number) : [], name: String(o.name ?? ''),
@@ -89,6 +98,7 @@ export class ReportsStore {
   private off: (() => void) | null = null
   private count = 0
   private parsed = new Map<string, Report | null>()
+  private unzipping = new Set<string>()
 
   subscribe = (fn: () => void) => { this.listeners.add(fn); return () => { this.listeners.delete(fn) } }
   getVersion = () => this.version
@@ -125,15 +135,19 @@ export class ReportsStore {
     }
   }
 
-  /** Готовый отчёт из заявки (разбираем один раз). */
+  /** Готовый отчёт из заявки (разбираем один раз; сжатый — распаковываем в фоне и сообщаем подписчикам). */
   report(d: ReportDoc): Report | null {
     if (d.status !== 'ready' || !d.raw) return null
     const key = d.id + ':' + (d.done ?? '')
-    if (!this.parsed.has(key)) {
-      let r: Report | null = null
-      try { r = JSON.parse(d.raw) as Report } catch { r = null }
-      this.parsed.set(key, r && Array.isArray(r.hotels) ? r : null)
+    if (this.parsed.has(key)) return this.parsed.get(key) ?? null
+    if (d.raw.startsWith('gz:')) {
+      if (!this.unzipping.has(key)) {
+        this.unzipping.add(key)
+        unzip(d.raw.slice(3)).then(parseReport, () => null).then((r) => { this.parsed.set(key, r); this.unzipping.delete(key); this.emit() })
+      }
+      return null
     }
+    this.parsed.set(key, parseReport(d.raw))
     return this.parsed.get(key) ?? null
   }
 
