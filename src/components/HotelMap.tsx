@@ -5,18 +5,23 @@ import { scoreColor } from '../lib/format'
 import { boxStyle, canvasStyle, defaultMapSize, keyResize, loadMapSize, saveMapSize, startResize, type MapSize } from '../lib/mapsize'
 import {
   LEGEND_MARK, LEGEND_SCORE, R_MAX, R_MIN, R_STEP, legendCounts, parseRadius, pinHtml, radiusText,
-  shownOnMap, toggleKey, tooltipHtml, type LegendKey,
+  shownMark, shownOnMap, toggleKey, tooltipHtml, type LegendKey,
 } from '../lib/maplegend'
+import type { Area } from '../lib/lasso'
+import { attachLasso, drawArea, type Lasso } from '../lib/lassodraw'
 import { useMarks } from '../hooks/useMarks'
 import { useLegend } from '../hooks/useLegend'
 
 const cssVar = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim() || '#888'
 const colorOf = (r: Row) => (r.anchor ? cssVar('--ink') : cssVar(scoreColor(r.my).slice(4, -1)))
 
-interface Props { rows: Row[]; visible: Set<number>; stop: Stop; selected: number | null; onSelect: (id: number) => void }
+interface Props {
+  rows: Row[]; visible: Set<number>; stop: Stop; selected: number | null; onSelect: (id: number) => void
+  area: Area | null; onArea: (a: Area | null) => void
+}
 interface Entry { layer: L.CircleMarker | L.Marker; kind: string; on: boolean }
 
-export function HotelMap({ rows, visible, stop, selected, onSelect }: Props) {
+export function HotelMap({ rows, visible, stop, selected, onSelect, area, onArea }: Props) {
   const store = useMarks()
   const dock = useRef<HTMLDivElement>(null)
   const box = useRef<HTMLElement>(null)
@@ -57,7 +62,7 @@ export function HotelMap({ rows, visible, stop, selected, onSelect }: Props) {
 
   // Легенда-пульт: меняет только то, что видно на карте (радиус ещё читает флажок «Только в радиусе»).
   const [legend, setLegend] = useLegend()
-  const setRadius = (r: number) => setLegend({ off: legend.off.filter((k) => k !== 'ring'), r })
+  const setRadius = (r: number) => setLegend({ ...legend, off: legend.off.filter((k) => k !== 'ring'), r })
   // Радиус текстом: черновик живёт, пока поле в фокусе; Enter или уход из поля — применить, Esc — отмена.
   const [draft, setDraft] = useState<string | null>(null)
   const cancelDraft = useRef(false)
@@ -68,8 +73,18 @@ export function HotelMap({ rows, visible, stop, selected, onSelect }: Props) {
   }
   const isOn = (k: LegendKey) => !legend.off.includes(k)
   const toggle = (k: LegendKey) => setLegend(toggleKey(legend, k))
-  const counts = useMemo(() => legendCounts(rows, visible, (id) => store.mine(stop.id, id)),
-    [rows, visible, store, store.version, stop.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Отметка на карте: только моя или (галочка «отметки всех») — моя, а если её нет, то чужая
+  const othersOf = (id: number) => store.othersFor(stop.id, id).map(([u, v]) => [store.nameOf(u), v] as [string, number])
+  const markOf = (id: number) => shownMark(store.mine(stop.id, id), legend.all ? othersOf(id) : [], legend.all)
+  const counts = useMemo(() => legendCounts(rows, visible, markOf),
+    [rows, visible, store, store.version, stop.id, legend.all]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Лассо: обвести область на карте → таблица покажет только отели внутри неё
+  const [lassoOn, setLassoOn] = useState(false)
+  const lasso = useRef<Lasso | null>(null)
+  const areaLayer = useRef<L.Polygon | null>(null)
+  const onAreaRef = useRef(onArea)
+  onAreaRef.current = onArea
 
   // Создаём карту один раз на остановку (аналог onMounted/onBeforeUnmount во Vue).
   useEffect(() => {
@@ -81,9 +96,18 @@ export function HotelMap({ rows, visible, stop, selected, onSelect }: Props) {
     ring.current = L.circle([stop.alat, stop.alng], { radius: 1000, color: cssVar('--accent'), weight: 1.5, dashArray: '6 6', fill: false, interactive: false })
     group.current = L.layerGroup().addTo(m)
     map.current = m
+    lasso.current = attachLasso(m, cssVar('--accent'), (a) => onAreaRef.current(a), setLassoOn)
     const es = entries.current
-    return () => { m.remove(); es.clear(); map.current = null; group.current = null; ring.current = null }
+    return () => {
+      lasso.current?.destroy(); lasso.current = null; areaLayer.current = null; setLassoOn(false)
+      m.remove(); es.clear(); map.current = null; group.current = null; ring.current = null
+    }
   }, [rows, stop])
+
+  // Обведённая область на карте (после пересоздания карты рисуем заново)
+  useEffect(() => {
+    if (map.current) areaLayer.current = drawArea(map.current, area, cssVar('--accent'), areaLayer.current)
+  }, [area, rows, stop])
 
   // Точки: обычные на canvas, отмеченные — значками с «+»/«−». Перерисовываем при смене
   // фильтров таблицы, выбранного отеля, отметок и легенды (аналог watch во Vue).
@@ -93,9 +117,11 @@ export function HotelMap({ rows, visible, stop, selected, onSelect }: Props) {
     const es = entries.current
     for (const r of rows) {
       if (!r.la || !r.ln) continue
-      const mark = store.mine(stop.id, r.id)
+      const mine = store.mine(stop.id, r.id)
+      const mark = markOf(r.id)
+      const foreign = !!mark && !mine
       const sel = selected === r.id
-      const kind = mark ? `${mark}${sel ? 's' : ''}` : '0'
+      const kind = mark ? `${mark}${sel ? 's' : ''}${foreign ? 'o' : ''}` : '0'
       let e = es.get(r.id)
       let created = false
       if (e && e.kind !== kind) { g.removeLayer(e.layer); es.delete(r.id); e = undefined }
@@ -105,7 +131,7 @@ export function HotelMap({ rows, visible, stop, selected, onSelect }: Props) {
       }
       if (!e) {
         const layer = mark
-          ? L.marker([r.la, r.ln], { icon: L.divIcon({ className: 'mpin-wrap', html: pinHtml(mark, colorOf(r), sel), iconSize: [22, 22], iconAnchor: [11, 11] }), keyboard: false, riseOnHover: true, zIndexOffset: mark === 1 ? 500 : 0 })
+          ? L.marker([r.la, r.ln], { icon: L.divIcon({ className: 'mpin-wrap', html: pinHtml(mark, colorOf(r), sel, foreign), iconSize: [22, 22], iconAnchor: [11, 11] }), keyboard: false, riseOnHover: true, zIndexOffset: mark === 1 ? 500 : 0 })
           : L.circleMarker([r.la, r.ln], { radius: r.anchor ? 9 : 6, weight: 1.5, color: '#fff', fillColor: colorOf(r), fillOpacity: 0.95 })
         layer.bindTooltip('')
         layer.on('click', () => pointClickRef.current(r.id))
@@ -118,8 +144,7 @@ export function HotelMap({ rows, visible, stop, selected, onSelect }: Props) {
         e.layer.setStyle({ weight: sel ? 3 : 1.5, color: sel ? cssVar('--ink') : '#fff' })
         if (sel || r.anchor) e.layer.bringToFront()
       }
-      const others = store.othersFor(stop.id, r.id).map(([u, v]) => [store.nameOf(u), v] as [string, number])
-      e.layer.setTooltipContent(tooltipHtml(r, mark, others, sel))
+      e.layer.setTooltipContent(tooltipHtml(r, mine, othersOf(r.id), sel))
       // Отметка сменилась — точка пересоздана другим значком: подсказку выбранной открываем заново
       if (sel && created) { e.layer.openTooltip(); openTip.current = e.layer }
     }
@@ -159,6 +184,15 @@ export function HotelMap({ rows, visible, stop, selected, onSelect }: Props) {
     <div ref={dock} className="mapdock">
       <figure ref={box} className="mapbox" style={boxStyle(size)}>
         <div ref={el} className="mapcanvas" style={canvasStyle(size)} />
+        <div className="mtools">
+          <button type="button" className="mtool" aria-pressed={lassoOn} title="Обвести область на карте: в таблице останутся только отели внутри неё"
+            onClick={() => lasso.current?.set(!lassoOn)}>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><ellipse cx="10.5" cy="7.5" rx="7.5" ry="5" strokeDasharray="2.6 2.2" /><path d="M5.5 11.3c-1.6 1.4-1.5 3.6.2 4.4 1.4.7 3-.2 2.9-1.6" /></svg>
+            {lassoOn ? 'Обведите область…' : 'Лассо'}
+          </button>
+          {area && <button type="button" className="mtool" title="Убрать обведённую область из фильтров" onClick={() => onArea(null)}>✕ Сбросить область</button>}
+        </div>
+        {lassoOn && <div className="mlasso-hint">Обведите область, не отпуская кнопку мыши или палец. Esc — отмена</div>}
         <figcaption>
           <div className="lg" role="group" aria-label="Что показывать на карте (на выборку в таблице не влияет)">
             {LEGEND_SCORE.map(([k, label, c]) => (
@@ -172,6 +206,9 @@ export function HotelMap({ rows, visible, stop, selected, onSelect }: Props) {
                 <i className={'lgpin lp' + m}>{m === 1 ? '+' : m === -1 ? '−' : ''}</i><span className="lgl">{label}</span><small>{counts[k] ?? 0}</small>
               </button>
             ))}
+            <label className="lgall" title="Плюсы и минусы всех участников, а не только ваши. Чужие — с пунктирной обводкой">
+              <input type="checkbox" checked={legend.all} onChange={() => setLegend({ ...legend, all: !legend.all })} />отметки всех
+            </label>
             <span className="lgsep" aria-hidden="true" />
             <button type="button" className="lgc" aria-pressed={isOn('anchor')} onClick={() => toggle('anchor')}>
               <i className="lgdot lgbig" style={{ background: 'var(--ink)' }} /><span className="lgl">«наш» отель</span>

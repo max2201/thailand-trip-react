@@ -15,7 +15,7 @@ export function HotelCard({ r, stop, selected }: { r: Row; stop: Stop; selected:
         <MarkButton stop={stop.id} id={r.id} />
         <div>
           <h3><a href={tripLink(r.id, stop)} target="_blank" rel="noopener">{r.nm}</a></h3>
-          <div className="meta">#{r.rank}, {r.z}{r.yr && <>, открыт в {r.yr}</>}</div>
+          <div className="meta">#{r.rank}, {r.z}{r.yr && <>, открыт в {r.yr}</>}{r.ry && <>, ремонт {r.ry}</>}</div>
           <Badges row={r} stop={stop} />
           <TcMarksBlock tc={r.tc} quiet />
         </div>

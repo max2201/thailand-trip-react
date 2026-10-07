@@ -4,7 +4,7 @@ import { dec, dec1, fmt } from '../lib/format'
 import { MarkButton } from './MarkButton'
 import { Badges, BriefBlock, FlagsBlock, ScoreChip, SubBar, TcMarksBlock } from './Bits'
 
-/** Ячейки одной строки (фрагмент из 21 <td>); <tr> рисует родитель. */
+/** Ячейки одной строки (фрагмент из 23 <td>); <tr> рисует родитель. */
 export function HotelCells({ r, stop, left }: { r: Row; stop: Stop; left: number[] }) {
   return (
     <>
@@ -39,6 +39,8 @@ export function HotelCells({ r, stop, left }: { r: Row; stop: Stop; left: number
         {r.tg}{r.cat && r.cat !== 'Отель' && r.cat !== r.tg && <div className="sub2">{r.cat}</div>}
         <div style={{ color: 'var(--warn)' }}>{r.st ? '★'.repeat(r.st) : <span className="sub2">без звёзд</span>}</div>
       </td>
+      <td className="num">{r.yr || '—'}</td>
+      <td className="num">{r.ry || '—'}</td>
       <td className="num">{r.ng == null ? '—' : dec(r.ng) + '%'}</td>
       <td className="num">{r.ns == null ? '—' : dec(r.ns) + '%'}</td>
     </>

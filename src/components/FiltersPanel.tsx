@@ -126,6 +126,12 @@ export function FiltersPanel({ filters: f, setFilters, rows, stop, guide, shown,
             <span className="box">✓</span>{label}{flagCount(k) != null && <span className="sub">{flagCount(k)}</span>}
           </button>
         ))}
+        {f.area && (
+          <button type="button" className="chip fc" aria-pressed="true" title="Отели внутри области, обведённой лассо на карте. Нажмите, чтобы убрать"
+            onClick={() => setFilters((x) => ({ ...x, area: null }))}>
+            <span className="box">✓</span>В обведённой области<span className="sub">✕</span>
+          </button>
+        )}
         <button className="link" type="button" onClick={() => setFilters(() => defaultFilters(stop))}>Сбросить фильтры</button>
         <button className="link" type="button" onClick={clearMarks}>{clearLabel}</button>
         <span className="count">

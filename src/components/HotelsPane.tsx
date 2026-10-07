@@ -76,6 +76,7 @@ export function HotelsPane({ stop, data, guide, filters }: { stop: Stop; data: S
           <button type="button" aria-pressed={view === 'cards'} onClick={() => setView('cards')}>Карточки</button>
         </div>
         <button className="link" type="button" onClick={() => setShowMap((v) => !v)}>{showMap ? 'Скрыть карту' : 'Показать карту'}</button>
+        <span className="vcount" aria-live="polite">{view === 'table' ? 'В таблице' : 'Показано'} <b>{list.length}</b> из {data.rows.length}{filters.area && ' · в обведённой области'}</span>
         <span className="rp-btns">
           <button type="button" className={'rp-open' + (lastMine && isOpen(lastMine) ? ' busy' : '')} onClick={() => setReport({ id: null })}>
             Подробный отчёт по моим плюсам<b>{plusCount}</b>
@@ -84,7 +85,8 @@ export function HotelsPane({ stop, data, guide, filters }: { stop: Stop; data: S
         </span>
       </div>
       <div className={'hstack ' + (view === 'cards' ? 'hs-cards' : 'hs-table')}>
-        {showMap && <HotelMap rows={data.rows} visible={visible} stop={stop} selected={selected} onSelect={select} />}
+        {showMap && <HotelMap rows={data.rows} visible={visible} stop={stop} selected={selected} onSelect={select}
+          area={filters.area} onArea={(area) => setFilters((x) => ({ ...x, area }))} />}
         {view === 'table' ? (
           <HotelsTable list={list} stop={stop} filters={filters} selected={selected} onSelect={select}
             onSort={(sort, dir) => setFilters((x) => ({ ...x, sort, dir }))} />
