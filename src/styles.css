@@ -96,7 +96,16 @@ th small{display:block;font-weight:400;font-size:11.5px;color:var(--muted)}
 tbody td{padding:12px;border-bottom:1px solid var(--line-soft);vertical-align:top;background:var(--surface)}
 tbody tr.mark td{background:color-mix(in srgb,var(--accent) 5%,var(--surface))}
 tbody tr.flash td{animation:fl 1.6s ease-out}@keyframes fl{0%{background:var(--accent-soft)}100%{background:var(--surface)}}
-.sticky{position:sticky;left:0;z-index:1} thead .sticky{z-index:5} td.name.sticky,th.name.sticky{box-shadow:1px 0 0 var(--line)}
+/* закрепление столбцов: положение задаёт lib/pins.ts, здесь — булавка в заголовке */
+th button:not(.pinb){padding-top:20px}
+.pinb{all:unset;position:absolute;top:3px;right:3px;width:16px;height:16px;display:grid;place-items:center;border-radius:5px;cursor:pointer;color:var(--muted);opacity:0;transition:opacity .12s,color .12s}
+.pinb svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linejoin:round;transform:rotate(35deg)}
+thead th:hover .pinb,.pinb:focus-visible{opacity:.65}
+.pinb:hover{color:var(--ink);opacity:1!important}
+.pinb:focus-visible{outline:2px solid var(--accent)}
+.pinb[aria-pressed="true"]{opacity:1;color:var(--accent)}
+.pinb[aria-pressed="true"] svg{fill:currentColor;transform:none}
+@media (hover:none){.pinb{opacity:.35}}
 .name{min-width:220px;max-width:250px}
 .name a{font-weight:600;text-decoration:none;line-height:1.3}
 .name a:hover{text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:3px}
@@ -135,9 +144,9 @@ ul.pros li::before{content:"+";color:var(--good)}ul.cons li::before{content:"−
 
 /* tri-state marks */
 th.mkc,td.mkc{width:48px;min-width:48px;max-width:48px;text-align:center;padding:12px 9px!important}
-th.mkc button{justify-content:center;padding:12px 0 10px;width:100%;font-size:16px}
+th.mkc button{justify-content:center;padding:8px 0 10px;width:100%;font-size:16px}
 th.rank,td.rank{width:40px;min-width:40px;max-width:40px;padding-left:4px!important;padding-right:8px!important;text-align:right}
-th.rank button{justify-content:flex-end;padding:12px 0 10px;width:100%}
+th.rank button{justify-content:flex-end;padding:20px 0 10px;width:100%}
 .tri{width:30px;height:30px;border-radius:8px;border:1.5px solid var(--line);background:var(--surface);cursor:pointer;font:700 18px/1 "Onest",sans-serif;display:inline-grid;place-items:center;padding:0;transition:background .12s,border-color .12s}
 .tri:hover{border-color:var(--muted)}
 .tri:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
@@ -145,9 +154,18 @@ th.rank button{justify-content:flex-end;padding:12px 0 10px;width:100%}
 .tri.t-1{background:var(--bad);border-color:var(--bad);color:#fff}
 tbody tr.plus td{background:color-mix(in srgb,var(--good) 7%,var(--surface))}
 tbody tr.minus td{background:var(--surface)}
-tbody tr.minus td:not(.sticky){opacity:.5}
+tbody tr.minus td:not(.mkc):not(.name)>*{opacity:.5}
+tbody tr.minus td:not(.mkc):not(.name){color:color-mix(in srgb,var(--ink) 50%,var(--surface))}
 tbody tr.minus td.rank{color:color-mix(in srgb,var(--muted) 55%,var(--surface))}
 tbody tr.minus td.name>*{opacity:.5}
+/* объединённая остановка — тонкая плашка над отрезками */
+.ribbon.has-v .seg{grid-row:3}
+.segv{grid-row:2;--cc:var(--c-cm);margin:0 2px 6px;display:flex;align-items:center;gap:8px;height:24px;padding:0 4px 0 10px;border-radius:999px;font-size:12px;line-height:1;color:var(--cc);background:color-mix(in srgb,var(--cc) 10%,var(--surface));border:1.5px dashed color-mix(in srgb,var(--cc) 55%,transparent);text-decoration:none;white-space:nowrap;overflow:hidden;box-sizing:border-box;transition:background .12s}
+.segv.sv-bkk{--cc:var(--c-bkk)}.segv.sv-cr{--cc:var(--c-cr)}.segv.sv-pt{--cc:var(--c-pt)}
+.segv b{font-weight:700}.segv span:not(.mk){opacity:.85;overflow:hidden;text-overflow:ellipsis}
+.segv:hover{background:color-mix(in srgb,var(--cc) 20%,var(--surface))}
+.segv[aria-pressed="true"]{background:var(--cc);border:1.5px solid var(--cc);color:#fff}
+.segv .mk{margin-left:auto;background:var(--surface);color:var(--good);font:700 11px/1 "Onest",sans-serif;padding:3px 6px;border-radius:999px}
 .seg .mk{position:absolute;top:6px;right:6px;background:var(--surface);color:var(--good);font:700 11.5px/1 "Onest",sans-serif;padding:3px 6px;border-radius:999px}
 .map circle.mplus{stroke:var(--good)!important;stroke-width:3!important}
 .map circle.mminus{opacity:.25}
@@ -281,6 +299,8 @@ body.resizing .mapcanvas{pointer-events:none}
 .mpin{display:grid;place-items:center;box-sizing:border-box;width:22px;height:22px;border-radius:50%;border:2px solid #fff;color:#fff;font:700 15px/1 "Onest",sans-serif;box-shadow:0 0 0 2.5px var(--good),0 1px 4px rgba(0,0,0,.35)}
 .mpin.mp-minus{box-shadow:0 0 0 2.5px var(--bad),0 1px 4px rgba(0,0,0,.35);opacity:.7}
 .mpin.sel{outline:3px solid var(--ink);outline-offset:2px;opacity:1}
+.mpin.hov{transform:scale(1.45);opacity:1;outline:2.5px solid var(--ink);outline-offset:2px}
+.mpin{transition:transform .12s}
 /* на телефоне легенда — одна строка, листается вбок */
 @media (max-width:760px){.lg{flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:1px}.lg::-webkit-scrollbar{display:none}.lg>*{flex:none}.mapbox .mhint{display:none}}
 .mapbox figcaption i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
