@@ -6,8 +6,6 @@ import { useReports } from '../hooks/useReports'
 import { useMarks } from '../hooks/useMarks'
 import { ReportView } from './ReportView'
 
-const MAX = 15
-
 /** Окно отчётов: заказать новый по своим плюсам, следить за готовностью, читать готовые. */
 export function ReportDialog({ stop, rows, openId, onClose }: { stop: Stop; rows: Row[]; openId?: string | null; onClose: () => void }) {
   const reports = useReports(stop.id)
@@ -32,7 +30,7 @@ export function ReportDialog({ stop, rows, openId, onClose }: { stop: Stop; rows
   const [name, setName] = useState('')
   const [sending, setSending] = useState(false)
   const [sendErr, setSendErr] = useState('')
-  const canSend = store.mode === 'shared' && !store.needName && picked.length > 0 && picked.length <= MAX && !sending
+  const canSend = store.mode === 'shared' && !store.needName && picked.length > 0 && !sending
   const send = async () => {
     if (!canSend || !store.myName) return
     setSending(true); setSendErr('')
@@ -101,7 +99,6 @@ export function ReportDialog({ stop, rows, openId, onClose }: { stop: Stop; rows
                       ))}
                     </ul>
                   )}
-                {picked.length > MAX && <p className="rp-err">Не больше {MAX} отелей в одном отчёте.</p>}
                 {same && isOpen(same) ? (
                   <div className="rp-same">По этим отелям отчёт уже {statusText(same.status)}. <button type="button" className="link" onClick={() => setCurrent(same.id)}>Посмотреть</button></div>
                 ) : (
