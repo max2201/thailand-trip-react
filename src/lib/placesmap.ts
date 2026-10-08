@@ -71,7 +71,9 @@ export function createPlacesMap(el: HTMLElement, onPick: (id: string) => void, o
     if (!l) return
     l.pin.getElement()?.querySelector('.pm-pin')?.classList.toggle('hov', on)
     l.pin.setZIndexOffset(on ? 2000 : 0)
-    if (l.area) { l.area.setStyle(areaStyle(l.item, on)); if (on) l.area.bringToFront() }
+    // порядок слоёв не трогаем: вложенные районы всегда лежат поверх больших (см. сортировку в set),
+    // иначе подсвеченный большой район поднимался наверх и перекрывал внутренние
+    if (l.area) l.area.setStyle(areaStyle(l.item, on))
   }
   function highlight(id: string | null) {
     if (id === cur) return
