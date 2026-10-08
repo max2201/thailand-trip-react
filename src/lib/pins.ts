@@ -19,6 +19,34 @@ export function savePins(p: string[]) {
   try { localStorage.setItem(KEY, JSON.stringify(p)) } catch { /* ignore */ }
 }
 
+/** Закреплённые строки (отели) — своя подборка на каждой остановке: { s2: [id, …], … }. */
+const RKEY = 'thai-trip-rowpins-v1'
+export function loadRowPins(stop: string): number[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(RKEY) || '{}')?.[stop]
+    if (Array.isArray(v)) return v.filter((x) => typeof x === 'number')
+  } catch { /* приватный режим */ }
+  return []
+}
+export function saveRowPins(stop: string, ids: number[]) {
+  try {
+    const all = JSON.parse(localStorage.getItem(RKEY) || '{}') || {}
+    if (ids.length) all[stop] = ids; else delete all[stop]
+    localStorage.setItem(RKEY, JSON.stringify(all))
+  } catch { /* ignore */ }
+}
+
+/**
+ * Закреплённые строки прилипают сверху под заголовком, одна под другой: top каждой = высота заголовка
+ * + высоты закреплённых строк над ней. Возвращает top для каждой строки и их общую высоту.
+ */
+export function rowTops(headH: number, heights: number[]) {
+  const tops: number[] = []
+  let y = headH
+  for (const h of heights) { tops.push(y); y += h }
+  return { tops, total: y - headH }
+}
+
 /** CSS для закреплённых столбцов: scope — селектор контейнера таблицы, widths — ширины всех столбцов. */
 export function pinCss(scope: string, widths: number[], pinned: boolean[]) {
   const left: number[] = [], right: number[] = []
@@ -34,6 +62,8 @@ export function pinCss(scope: string, widths: number[], pinned: boolean[]) {
     const th = `${scope} thead th:nth-child(${n})`
     out.push(`${td},${th}{position:sticky;left:${left[i]}px;right:${right[i]}px}`)
     out.push(`${td}{z-index:1}${th}{z-index:5}`)
+    // ячейка закреплённого столбца в закреплённой строке — поверх всего, кроме заголовка
+    out.push(`${scope} tbody tr.pinrow:not(.spacer):not(.emptyrow)>td:nth-child(${n}){z-index:3}`)
     // линия по краю группы закреплённых столбцов (там, где под ними уезжают остальные);
     // :where — нулевая специфичность, чтобы не перебивать подсветку выбранной строки
     const sh = [i < widths.length - 1 && !pinned[i + 1] ? '1px 0 0 var(--line)' : '', i > 0 && !pinned[i - 1] ? '-1px 0 0 var(--line)' : ''].filter(Boolean)

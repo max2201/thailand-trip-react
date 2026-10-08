@@ -74,6 +74,8 @@ export interface TripIndex {
   cities: Record<CityId, { meds: number; count: number }>
   builtAt: string
   reviews: number
+  /** Координаты мест для карт на вкладках: город → вид → название → [lat, lng] */
+  places?: Partial<Record<CityId, Partial<Record<'sights' | 'trips' | 'events', Record<string, [number, number]>>>>>
 }
 
 export interface Parts { base: number; fl: number; neg: number; tr: number; sm: number; prox: number; value: number }
