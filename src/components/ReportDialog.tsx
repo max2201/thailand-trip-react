@@ -38,7 +38,17 @@ export function ReportDialog({ stop, rows, openId, onClose }: { stop: Stop; rows
     catch (e) { setSendErr(errorText((e as { code?: string }).code || String(e))) }
     finally { setSending(false) }
   }
+  // Отмена в два нажатия: первое спрашивает «точно?», второе отменяет. Отменить можно и заявку в работе —
+  // обработчик проверяет статус между шагами и бросает её (см. REPORTS.md в thailand-trip-pipeline).
+  const [armed, setArmed] = useState<string | null>(null)
+  const armTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const cancel = async (d: ReportDoc) => {
+    if (armed !== d.id) {
+      setArmed(d.id)
+      clearTimeout(armTimer.current); armTimer.current = setTimeout(() => setArmed(null), 5000)
+      return
+    }
+    setArmed(null)
     try { await reports.cancel(d.id); if (current === d.id) setCurrent(null) }
     catch (e) { setSendErr(errorText((e as { code?: string }).code || String(e))) }
   }
@@ -73,7 +83,13 @@ export function ReportDialog({ stop, rows, openId, onClose }: { stop: Stop; rows
                 : <p className="rp-note">Сейчас ночь: заявку возьмут в работу после 8:00 по времени Таиланда.</p>)}
               <p className="rp-note">{names(doc).join(', ')}</p>
               <p className="rp-note">{DUTY_TEXT}</p>
-              {doc.status === 'queued' && doc.name === store.myName && <button type="button" className="link" onClick={() => cancel(doc)}>отменить заявку</button>}
+              {isOpen(doc) && (
+                <div className="rp-cancel">
+                  <button type="button" className={'rp-cancel-b' + (armed === doc.id ? ' armed' : '')} onClick={() => cancel(doc)}>{armed === doc.id ? 'Точно отменить? Нажмите ещё раз' : 'Отменить заявку'}</button>
+                  {doc.status === 'working' && <span className="rp-note">Обработчик заметит отмену на ближайшем шаге и остановится — лимиты на этот отчёт больше не тратятся. Готовые части не сохранятся.</span>}
+                  {sendErr && <p className="rp-err">{sendErr}</p>}
+                </div>
+              )}
             </div>
           ) : (
             <>

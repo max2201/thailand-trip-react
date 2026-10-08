@@ -6,11 +6,14 @@ import { hoverHotel } from '../lib/hover'
 import { Badges, BriefBlock, FlagsBlock, ScoreChip, SubBar, TcMarksBlock } from './Bits'
 
 /** Ячейки одной строки (фрагмент из 23 <td>); <tr> рисует родитель. */
-export function HotelCells({ r, stop }: { r: Row; stop: Stop }) {
+export function HotelCells({ r, stop, rowPinned = false, onPin }: { r: Row; stop: Stop; rowPinned?: boolean; onPin?: () => void }) {
   return (
     <>
       <td className="mkc"><MarkButton stop={stop.id} id={r.id} /></td>
-      <td className="rank">{r.rank}</td>
+      <td className="rank">{r.rank}<button type="button" className="rpin" aria-pressed={rowPinned}
+        title={rowPinned ? 'Открепить строку' : 'Закрепить строку: останется сверху таблицы при прокрутке и при любых фильтрах'}
+        aria-label={`${rowPinned ? 'Открепить' : 'Закрепить'} строку «${r.nm}»`} onClick={(e) => { e.stopPropagation(); onPin?.() }}>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 1.5h4l-.6 4.2 2.6 2.3v1.3H8.7V15L8 15.8 7.3 15V9.3H4V8l2.6-2.3z" /></svg></button></td>
       <td className="name" onMouseEnter={() => hoverHotel.set(r.id)} onMouseLeave={() => hoverHotel.set(null)}>
         <a href={tripLink(r.id, stop)} target="_blank" rel="noopener" onClick={(e) => e.stopPropagation()}>{r.nm}</a>
         <div className="meta">{r.z}{r.yr && <>, открыт в {r.yr}</>}</div>

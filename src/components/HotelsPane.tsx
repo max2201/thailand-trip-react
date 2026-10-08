@@ -88,7 +88,7 @@ export function HotelsPane({ stop, data, guide, filters }: { stop: Stop; data: S
         {showMap && <HotelMap rows={data.rows} visible={visible} stop={stop} selected={selected} onSelect={select}
           area={filters.area} onArea={(area) => setFilters((x) => ({ ...x, area }))} />}
         {view === 'table' ? (
-          <HotelsTable list={list} stop={stop} filters={filters} selected={selected} onSelect={select}
+          <HotelsTable list={list} all={data.rows} stop={stop} filters={filters} selected={selected} onSelect={select}
             onSort={(sort, dir) => setFilters((x) => ({ ...x, sort, dir }))} />
         ) : (
           <div className="cards">

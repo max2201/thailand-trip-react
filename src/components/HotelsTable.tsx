@@ -1,11 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { Row, Stop } from '../lib/types'
 import { ASC_FIRST, type Filters, type SortKey } from '../lib/filters'
 import { plural } from '../lib/format'
 import { HotelCells } from './HotelCells'
 import { useMarks } from '../hooks/useMarks'
-import { headWidths, loadPins, pinCss, pinStyle, savePins } from '../lib/pins'
+import { headWidths, loadPins, loadRowPins, pinCss, pinStyle, rowTops, saveRowPins, savePins } from '../lib/pins'
 
 const COLS: [SortKey, string, string][] = [
   ['mark', '±', ''], ['rank', '#', ''], ['name', 'Отель', ''], ['my', 'Моя оценка', 'из 10'],
@@ -17,11 +17,11 @@ const COLS: [SortKey, string, string][] = [
 ]
 
 interface Props {
-  list: Row[]; stop: Stop; filters: Filters; selected: number | null
+  list: Row[]; all: Row[]; stop: Stop; filters: Filters; selected: number | null
   onSort: (k: SortKey, dir: 1 | -1) => void; onSelect: (id: number) => void
 }
 
-export function HotelsTable({ list, stop, filters, selected, onSort, onSelect }: Props) {
+export function HotelsTable({ list, all, stop, filters, selected, onSort, onSelect }: Props) {
   const store = useMarks()
   const box = useRef<HTMLDivElement>(null)
   const table = useRef<HTMLTableElement>(null)
@@ -32,17 +32,30 @@ export function HotelsTable({ list, stop, filters, selected, onSort, onSelect }:
   const pinsRef = useRef(pins)
   pinsRef.current = pins
 
+  // Закреплённые строки: всегда сверху под заголовком, при любых фильтрах; остальные — ниже, без них.
+  const [rowPins, setRowPins] = useState<number[]>(() => loadRowPins(stop.id))
+  useEffect(() => { setRowPins(loadRowPins(stop.id)) }, [stop.id])
+  const pinnedRows = useMemo(() => { const by = new Map(all.map((r) => [r.id, r])); return rowPins.map((id) => by.get(id)).filter((r): r is Row => !!r) }, [all, rowPins])
+  const body = useMemo(() => { const p = new Set(rowPins); return p.size ? list.filter((r) => !p.has(r.id)) : list }, [list, rowPins])
+  const [pinTops, setPinTops] = useState<number[]>([])
+  const [pinH, setPinH] = useState(0)
+  const toggleRow = (id: number) => {
+    const next = rowPins.includes(id) ? rowPins.filter((x) => x !== id) : [...rowPins, id]
+    saveRowPins(stop.id, next)
+    setRowPins(next)
+  }
+
   // Виртуальный скролл: рендерим только видимые строки (как в Vue-версии, но через хук).
   const virt = useVirtualizer({
-    count: list.length,
+    count: body.length,
     getScrollElement: () => box.current,
     estimateSize: () => 190,
     overscan: 6,
-    paddingStart: headH,
-    getItemKey: (i) => list[i]?.id ?? i,
+    paddingStart: headH + pinH,
+    getItemKey: (i) => body[i]?.id ?? i,
   })
   const items = virt.getVirtualItems()
-  const padTop = items.length ? items[0].start - headH : 0
+  const padTop = items.length ? items[0].start - headH - pinH : 0
   const padBottom = items.length ? virt.getTotalSize() - items[items.length - 1].end : 0
 
   const measure = useRef(() => {})
@@ -50,7 +63,11 @@ export function HotelsTable({ list, stop, filters, selected, onSort, onSelect }:
     const t = table.current
     if (!t) return
     ps.set(pinCss(ps.scope, headWidths(t), COLS.map(([k]) => pinsRef.current.includes(k))))
-    setHeadH(Math.round(t.querySelector('thead')?.getBoundingClientRect().height ?? 52))
+    const hh = Math.round(t.querySelector('thead')?.getBoundingClientRect().height ?? 52)
+    setHeadH(hh)
+    const { tops, total } = rowTops(hh, Array.from(t.querySelectorAll<HTMLElement>('tbody tr.pinrow')).map((tr) => tr.getBoundingClientRect().height))
+    setPinTops((prev) => (prev.join() === tops.join() ? prev : tops))
+    setPinH(total)
   }
   useLayoutEffect(() => {
     const t = table.current
@@ -60,7 +77,7 @@ export function HotelsTable({ list, stop, filters, selected, onSort, onSelect }:
     measure.current()
     return () => { ro.disconnect(); ps.destroy() }
   }, [ps])
-  useLayoutEffect(() => { measure.current() }, [pins])
+  useLayoutEffect(() => { measure.current() }, [pins, rowPins])
   const togglePin = (k: string) => {
     const next = pins.includes(k) ? pins.filter((x) => x !== k) : [...pins, k]
     savePins(next)
@@ -69,7 +86,7 @@ export function HotelsTable({ list, stop, filters, selected, onSort, onSelect }:
 
   useEffect(() => {
     if (selected == null) return
-    const i = list.findIndex((r) => r.id === selected)
+    const i = body.findIndex((r) => r.id === selected)
     if (i >= 0) virt.scrollToIndex(i, { align: 'center' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected])
@@ -108,17 +125,23 @@ export function HotelsTable({ list, stop, filters, selected, onSort, onSelect }:
           </tr>
         </thead>
         <tbody>
+          {pinnedRows.map((r, i) => (
+            <tr key={'p' + r.id} className={`${rowClass(r)} pinrow${i === pinnedRows.length - 1 ? ' plast' : ''}`}
+              style={{ '--pt': (pinTops[i] ?? headH) + 'px' } as CSSProperties} onClick={() => onSelect(r.id)}>
+              <HotelCells r={r} stop={stop} rowPinned onPin={() => toggleRow(r.id)} />
+            </tr>
+          ))}
           {padTop > 0 && <tr className="spacer"><td colSpan={23} style={{ height: padTop }} /></tr>}
           {items.map((it) => {
-            const r = list[it.index]
+            const r = body[it.index]
             return (
               <tr key={it.key} ref={virt.measureElement} data-index={it.index} className={rowClass(r)} onClick={() => onSelect(r.id)}>
-                <HotelCells r={r} stop={stop} />
+                <HotelCells r={r} stop={stop} rowPinned={false} onPin={() => toggleRow(r.id)} />
               </tr>
             )
           })}
           {padBottom > 0 && <tr className="spacer"><td colSpan={23} style={{ height: padBottom }} /></tr>}
-          {!list.length && <tr className="emptyrow"><td colSpan={23} className="empty">Под эти фильтры ничего не подходит. Снимите один из фильтров или нажмите «Весь город».</td></tr>}
+          {!body.length && <tr className="emptyrow"><td colSpan={23} className="empty">Под эти фильтры ничего не подходит. Снимите один из фильтров или нажмите «Весь город».</td></tr>}
         </tbody>
       </table>
     </div>
